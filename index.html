@@ -115,6 +115,16 @@ input[type=text]{background:#0d1828;border:1px solid var(--line);color:var(--tex
 .linegrid button small{display:block;font-weight:400;font-size:11px;opacity:.9}
 .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#ff3b55;color:#fff;font-weight:900;font-size:clamp(24px,6vw,44px);padding:10px 28px;border-radius:14px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:pop 1.6s forwards;pointer-events:none}
 @keyframes pop{0%{transform:translateX(-50%) scale(.5);opacity:0}15%{transform:translateX(-50%) scale(1.1);opacity:1}25%{transform:translateX(-50%) scale(1)}80%{opacity:1}100%{opacity:0}}
+.tcwrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.byline{font-size:13px;font-weight:700;padding:3px 12px;border-radius:999px;background:#152640;border:2px solid var(--pc,#555);white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.byline .dot{color:var(--pc)}
+.pchip{border-left:6px solid var(--pc)!important}
+.pchip.flash{animation:flash .8s}
+@keyframes flash{0%{transform:scale(1)}30%{transform:scale(1.12);box-shadow:0 0 0 5px var(--pc)}100%{transform:scale(1)}}
+.fly{position:fixed;z-index:40;pointer-events:none;transform-origin:top left;transition:transform .55s cubic-bezier(.2,.8,.25,1),opacity .3s}
+.fly.land{opacity:0;transition:opacity .45s .35s}
+.fly .who{position:absolute;top:-30px;left:50%;transform:translateX(-50%);background:var(--pc);color:#111;font-weight:900;font-size:14px;padding:3px 12px;border-radius:999px;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.flydraw{position:fixed;z-index:39;width:56px;height:80px;margin:-40px 0 0 -28px;border-radius:8px;background:repeating-linear-gradient(45deg,#1f4f8f 0 8px,#1a4176 8px 16px);border:2px solid #fff;color:#ffd34d;font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center;pointer-events:none;transition:transform .55s ease-in,opacity .55s ease-in}
 .rules h3{margin:14px 0 4px;color:var(--accent);font-size:15px}
 .rules p,.rules li{font-size:14px;line-height:1.7}
 .set label{display:inline-flex;align-items:center;gap:4px;margin:3px 8px 3px 0;font-size:14px}
@@ -132,6 +142,93 @@ input[type=text]{background:#0d1828;border:1px solid var(--line);color:var(--tex
   .pchip{font-size:11px;padding:3px 7px;white-space:nowrap}
   .table{gap:10px;padding:8px}
   .log{max-height:70px}
+}
+
+/* ===== テーブル型レイアウト ===== */
+#game{display:block;height:100vh;height:100dvh}
+.arena{position:relative;width:100%;height:100%;overflow:hidden;
+  background:radial-gradient(ellipse 60% 48% at 50% 43%,#2d5a8c 0%,#1a3a63 45%,#0d1f38 75%,#081426 100%)}
+.arena::before{content:"";position:absolute;left:50%;top:43%;width:84%;height:74%;transform:translate(-50%,-50%);border-radius:50%;
+  border:3px solid rgba(255,255,255,.08);box-shadow:inset 0 0 80px rgba(0,0,0,.35),0 0 0 14px rgba(255,255,255,.025)}
+.arena::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,transparent 0 46px,rgba(255,255,255,.018) 46px 48px)}
+.ring{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.ring ellipse{fill:none;stroke:rgba(255,211,77,.35);stroke-width:3;stroke-dasharray:4 14;stroke-linecap:round;animation:flow 1.2s linear infinite}
+.ring.rev ellipse{animation-direction:reverse}
+@keyframes flow{to{stroke-dashoffset:-18}}
+.hud{position:absolute;left:12px;top:10px;z-index:20;display:flex;gap:6px;align-items:center}
+.hud .title{font-weight:900;color:var(--accent);margin-right:6px;text-shadow:0 2px 6px rgba(0,0,0,.6)}
+.btn.sm{padding:5px 10px;font-size:13px;background:rgba(0,0,0,.3)}
+.info{position:absolute;right:12px;top:10px;z-index:20;width:280px;padding:8px 10px;background:rgba(10,22,40,.82);backdrop-filter:blur(4px)}
+.info .log{margin:0;border:none;padding:0;max-height:150px}
+.info.closed{display:none}
+.center{position:absolute;left:50%;top:43%;transform:translate(-50%,-50%);z-index:5;display:flex;flex-direction:column;align-items:center;gap:6px}
+.center .pile{gap:22px}
+.center .deck{transform:rotate(-8deg)}
+.center .dk{font-size:18px}
+.cl{justify-content:center;max-width:320px}
+.center .req{margin:0}
+.seat{position:absolute;z-index:6;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none}
+.plate{position:relative;display:flex;flex-direction:column;align-items:center}
+.plate .nm{background:linear-gradient(90deg,var(--pc),transparent);color:#fff;font-weight:900;font-size:14px;padding:2px 26px 2px 10px;border-radius:6px 0 0 6px;
+  text-shadow:0 1px 3px rgba(0,0,0,.7);white-space:nowrap;align-self:flex-start;margin-bottom:-4px;z-index:2;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.plate .av{width:72px;height:72px;border-radius:10px;border:3px solid #fff;background:linear-gradient(135deg,var(--pc),#1b2c47);
+  display:flex;align-items:center;justify-content:center;font-size:38px;box-shadow:0 6px 14px rgba(0,0,0,.45)}
+.plate .cnt{position:absolute;right:-30px;bottom:2px;background:#fff;color:#111;font-weight:900;font-size:18px;min-width:30px;height:34px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;box-shadow:3px -3px 0 #ddd,0 4px 8px rgba(0,0,0,.4);padding:0 4px}
+.plate .anob{position:absolute;top:-14px;right:-24px;background:#ff3b55;color:#fff;font-weight:900;font-size:13px;padding:2px 8px;border-radius:999px;transform:rotate(10deg);box-shadow:0 2px 6px rgba(0,0,0,.5);animation:bob 1s ease-in-out infinite alternate}
+@keyframes bob{to{transform:rotate(10deg) translateY(-3px)}}
+.seat.turn .av{box-shadow:0 0 0 4px var(--accent),0 0 28px 6px rgba(255,200,60,.7)}
+.seat.turn .plate::after{content:"▼ 運転中";position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:900;color:var(--accent);white-space:nowrap;text-shadow:0 1px 3px #000}
+.plate.flash .av{animation:flash2 .8s}
+@keyframes flash2{30%{transform:scale(1.15);box-shadow:0 0 0 6px var(--pc)}}
+.fan{position:absolute;z-index:4;width:0;height:0;pointer-events:none;transition:transform .3s}
+.fan .bk{position:absolute;left:-23px;top:-33px;width:46px;height:66px;border-radius:6px;border:2px solid #fff;
+  background:repeating-linear-gradient(45deg,#1f4f8f 0 6px,#1a4176 6px 12px);box-shadow:0 2px 5px rgba(0,0,0,.4);transform-origin:50% 230%}
+.fan .bk::after{content:"ANO";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#ffd34d;transform:rotate(-30deg)}
+.seat.mine{left:auto!important;top:auto!important;transform:none;left:14px!important;bottom:150px;z-index:15}
+.status{position:absolute;left:50%;bottom:218px;transform:translateX(-50%);z-index:12;background:rgba(0,0,0,.45);border-radius:999px;padding:5px 18px;white-space:nowrap;font-size:15px}
+.actions{position:absolute;right:14px;bottom:200px;z-index:15;display:flex;flex-direction:column;align-items:flex-end;gap:8px;padding:0}
+.kwbtn{width:96px;height:96px;border-radius:50%;border:4px solid #fff;font-size:26px;cursor:pointer;
+  background:radial-gradient(circle at 35% 30%,#ffe46b,#ffb300 55%,#d97a00);color:#c4122f;font-family:inherit;font-weight:900;
+  text-shadow:2px 2px 0 #fff;box-shadow:0 6px 0 #8a4b00,0 10px 20px rgba(0,0,0,.5)}
+.kwbtn:not(:disabled){animation:kwp 1s ease-in-out infinite alternate}
+@keyframes kwp{to{transform:scale(1.08)}}
+.kwbtn:disabled{filter:grayscale(.85) brightness(.6);cursor:not-allowed;animation:none}
+.kwbtn.on{filter:none;background:radial-gradient(circle at 35% 30%,#9ff0b5,#2fb35a);color:#fff;text-shadow:none;font-size:17px}
+.hand{position:absolute;left:0;right:0;bottom:0;z-index:10;height:200px;display:flex;justify-content:center;align-items:flex-end;
+  overflow:visible;padding:0 20px 30px;background:linear-gradient(0deg,rgba(0,0,0,.45),transparent);border:none;min-height:0;gap:0}
+.hand .card{transform-origin:50% 120%;transform:translateY(var(--y,0)) rotate(var(--r,0));transition:transform .15s,margin .2s}
+.hand .card.playable:hover{transform:translateY(calc(var(--y,0px) - 26px)) rotate(var(--r,0)) scale(1.06);z-index:5}
+.hand .card.playable{box-shadow:0 0 0 3px #ffd34d,0 6px 14px rgba(0,0,0,.5)}
+.splash{position:fixed;left:50%;top:42%;z-index:70;pointer-events:none;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;animation:spl 1.8s forwards}
+.splash::before{content:"";position:absolute;left:50%;top:50%;width:520px;height:520px;transform:translate(-50%,-50%);border-radius:50%;z-index:-1;
+  background:repeating-conic-gradient(rgba(255,230,120,.55) 0 10deg,transparent 10deg 22deg);-webkit-mask:radial-gradient(circle,#000 20%,transparent 68%);mask:radial-gradient(circle,#000 20%,transparent 68%);animation:spin 3s linear infinite}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.splash .big{font-size:clamp(70px,16vw,150px);font-weight:900;color:#ffd21f;letter-spacing:.02em;line-height:1;
+  -webkit-text-stroke:6px #1b1b1b;paint-order:stroke fill;text-shadow:0 10px 0 #1b1b1b,0 14px 30px rgba(0,0,0,.6)}
+.splash.red .big{color:#ff4d63}
+.splash .sub{margin-top:8px;background:var(--pc,#222);color:#fff;font-weight:900;font-size:20px;padding:4px 18px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.5)}
+@keyframes spl{0%{transform:translate(-50%,-50%) scale(.3) rotate(-10deg);opacity:0}14%{transform:translate(-50%,-50%) scale(1.12) rotate(3deg);opacity:1}24%{transform:translate(-50%,-50%) scale(1) rotate(0)}82%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.15)}}
+@media (max-width:760px){
+  .hud .title{display:none}
+  .info{width:200px;top:46px;left:12px;right:auto}
+  .plate .av{width:46px;height:46px;font-size:24px;border-width:2px}
+  .plate .nm{font-size:11px;padding:1px 16px 1px 6px;max-width:96px}
+  .plate .cnt{right:-22px;font-size:14px;min-width:22px;height:26px}
+  .fan .bk{left:-14px;top:-20px;width:28px;height:40px;border-width:1.5px}
+  .fan .bk::after{font-size:6px}
+  .center .pile{gap:12px}
+  .center .deck{width:66px;height:96px}.center .dk{font-size:13px}
+  .card.big{width:96px;height:140px}.card.big .st{font-size:18px}.card.big .st.s{font-size:15px}.card.big .st.xs{font-size:12px}.card.big .band{font-size:9px}.card.big .num{font-size:11px}
+  .byline{font-size:11px}.cl{max-width:240px}.lchip{font-size:10px;padding:1px 5px}
+  .hand{height:150px;padding-bottom:22px}
+  .center .muted{display:none}
+  .seat.mine{bottom:150px;left:8px!important}
+  .status{bottom:156px;font-size:12px;padding:4px 12px}
+  .actions{bottom:150px;right:8px}
+  .kwbtn{width:68px;height:68px;font-size:18px}
+  .actions .btn{font-size:12px;padding:6px 10px}
 }
 </style>
 </head>
@@ -196,31 +293,28 @@ input[type=text]{background:#0d1828;border:1px solid var(--line);color:var(--tex
 
 <!-- ===== ゲーム ===== -->
 <div id="game" class="hidden">
-  <div class="topbar">
-    <span class="title">ANO KAWASHIMA</span>
-    <span class="dir" id="dirIcon">⟳</span>
-    <div class="players" id="players"></div>
-    <button class="btn ghost" id="btnRules2" style="padding:6px 10px">ルール</button>
-  </div>
-  <div class="table">
-    <div class="pile">
-      <div class="deck" id="deck">山札<small id="deckCount"></small></div>
-      <div id="topCard"></div>
-    </div>
-    <div class="info">
-      <h3>現在の駅に乗り入れている路線</h3>
-      <div class="chips" id="topLines"></div>
+  <div class="arena" id="arena">
+    <svg class="ring" viewBox="0 0 100 100" preserveAspectRatio="none"><ellipse id="ringE" cx="50" cy="43" rx="27" ry="26" vector-effect="non-scaling-stroke"/></svg>
+    <div class="hud"><span class="title">ANO KAWASHIMA</span><button class="btn ghost sm" id="btnRules2">ルール</button><button class="btn ghost sm" id="btnLog">ログ</button></div>
+    <div class="info" id="infoPanel"><div class="log" id="log"></div></div>
+    <div id="seats"></div>
+    <div class="center" id="center">
+      <div class="pile">
+        <div class="deck" id="deck"><span class="dk">山札</span><small id="deckCount"></small></div>
+        <div class="tcwrap"><div id="topCard"></div></div>
+      </div>
+      <div class="byline" id="byline"></div>
+      <div class="chips cl" id="topLines"></div>
       <div class="req hidden" id="reqLine"></div>
-      <div class="log" id="log"></div>
     </div>
+    <div class="status" id="status"></div>
+    <div class="actions">
+      <button class="btn" id="btnPass">パス</button>
+      <button class="btn danger" id="btnCatch">ANO!言ってない！</button>
+      <button class="kwbtn" id="btnKw">ANO!</button>
+    </div>
+    <div class="hand" id="hand"></div>
   </div>
-  <div class="status" id="status"></div>
-  <div class="actions">
-    <button class="btn kwbtn" id="btnKw">ANO!</button>
-    <button class="btn" id="btnPass">パス</button>
-    <button class="btn danger" id="btnCatch">ANO!言ってない！</button>
-  </div>
-  <div class="hand" id="hand"></div>
 </div>
 
 <div id="modal" class="modal hidden"><div class="inner" id="modalInner"></div></div>
@@ -309,7 +403,7 @@ class Engine{
     this.players=players.map(p=>({...p,hand:[],declared:false}));
     this.deck=shuffle(buildDeck(this.active));
     this.discard=[]; this.dir=1; this.turn=Math.floor(Math.random()*this.players.length);
-    this.requiredLine=null; this.drawn=null; this.vuln=null; this.winner=null; this.log=[]; this.seq=0; this.events=[];
+    this.gid=Math.random().toString(36).slice(2); this.lastBy=null; this.requiredLine=null; this.drawn=null; this.vuln=null; this.winner=null; this.log=[]; this.seq=0; this.events=[];
     for(let r=0;r<7;r++) for(const p of this.players) p.hand.push(this.deck.pop());
     // 最初の場札は通常駅カード
     let i=this.deck.findIndex(c=>c.type==='normal');
@@ -333,6 +427,7 @@ class Engine{
       const c=this.deck.pop(); p.hand.push(c); got.push(c);
     }
     if(p.hand.length>1) p.declared=false;
+    if(got.length) this.event({type:'draw',who:this.players.indexOf(p),n:got.length});
     return got;
   }
   // 1枚単独で出せるか
@@ -401,6 +496,7 @@ class Engine{
       }
       p.hand=p.hand.filter(c=>!played.includes(c));
       for(const c of played) this.discard.push(c);
+      this.lastBy=pi; this.event({type:'play',who:pi,cards:played.map(c=>({...c})),line:a.line||null});
       this.drawn=null;
       // ログ
       if(card.type==='gate') this.addLog(`🟧 ${p.name}：改札で乗り換え！ ${card.station}駅（${LINES[topCard.line].name}）へ 2枚出し`);
@@ -435,10 +531,10 @@ class Engine{
   endTurn(k){ this.drawn=null; this.turn=this.next(k); }
   view(pi){
     return {
-      phase:'play', me:pi, turn:this.turn, dir:this.dir, winner:this.winner,
+      phase:'play', gid:this.gid, lastBy:this.lastBy, me:pi, turn:this.turn, dir:this.dir, winner:this.winner,
       players:this.players.map(p=>({name:p.name,count:p.hand.length,cpu:!!p.cpu,declared:p.declared})),
       hand:this.players[pi].hand, top:this.top, requiredLine:this.requiredLine, drawn:this.turn===pi?this.drawn:null,
-      playable:this.playableIds(pi), vuln:this.vuln, active:this.active, rules:this.rules, deckCount:this.deck.length, log:this.log.slice(-30), events:this.events.slice(-5)
+      playable:this.playableIds(pi), vuln:this.vuln, active:this.active, rules:this.rules, deckCount:this.deck.length, log:this.log.slice(-30), events:this.events.slice(-10)
     };
   }
   // ---- CPU ----
@@ -643,20 +739,65 @@ function renderLobby(){
   $('lobbyList').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{S.roster.splice(+b.dataset.rm,1);broadcastLobby()});
 }
 
+const PCOL=['#ffb020','#4fb3ff','#3ccf7a','#ff6b8a','#b38cff','#4fe0d0'];
+const pcol=i=>PCOL[i%PCOL.length];
+const AVA=['🚃','🚄','🚌','🚂','🚇','🚝'];
+const plateEl=i=>document.querySelector(`#seat${i} .plate`);
+const chipEl=i=>document.querySelector(`#seat${i} .fan`)||document.querySelector(`#seat${i} .av`);
+function renderSeats(v){
+  const ar=$('arena'); const W=ar.clientWidth, H=ar.clientHeight; const n=v.players.length;
+  const cx=W/2, cy=H*0.43, rx=W*0.43, ry=H*0.36;
+  const mob=W<760;
+  let html='';
+  v.players.forEach((p,i)=>{
+    const sIdx=((i-v.me)%n+n)%n;
+    const plate=`<div class="plate" style="--pc:${pcol(i)}"><div class="nm">${esc(p.name)}</div><div class="av">${p.cpu?'🤖':AVA[i%AVA.length]}</div><div class="cnt">${p.count}</div>${p.count===1&&p.declared?'<div class="anob">ANO!</div>':''}</div>`;
+    if(sIdx===0){ html+=`<div class="seat mine ${i===v.turn?'turn':''}" id="seat${i}">${plate}</div>`; return; }
+    const span=Math.min(210,120*(n-2)); const opp=n-1;
+    const ang=(opp===1?270:165+ (210-span)/2 + (sIdx-1)*span/(opp-1))*Math.PI/180;
+    const sx=cx+rx*Math.cos(ang), sy=cy+ry*Math.sin(ang)*(Math.sin(ang)<0?1:0.9);
+    const fk=mob?(Math.abs(Math.cos(ang))>0.5?0.76:0.62):0.66; const fx=cx+rx*fk*Math.cos(ang), fy=cy+ry*fk*Math.sin(ang);
+    const rot=ang*180/Math.PI-90+180;
+    const k=Math.min(p.count,14), step=Math.min(9,80/Math.max(k,1));
+    let fan=''; for(let j=0;j<k;j++) fan+=`<div class="bk" style="transform:rotate(${(j-(k-1)/2)*step}deg)"></div>`;
+    html+=`<div class="seat ${i===v.turn?'turn':''}" id="seat${i}" style="left:${Math.min(W-(mob?66:80),Math.max(mob?44:70,sx))}px;top:${Math.max(mob?70:62,sy-(mob&&Math.abs(Math.cos(ang))>0.5?80:0))}px">${plate}</div>`
+        + `<div class="fan" id="fan${i}" style="left:${fx}px;top:${fy}px;transform:rotate(${rot}deg)">${fan}</div>`;
+  });
+  $('seats').innerHTML=html;
+  // fanをseat内参照できるように
+  v.players.forEach((p,i)=>{ const f=$('fan'+i), st=$('seat'+i); if(f&&st){ st.appendChild(f.cloneNode(true)); f.remove(); const nf=st.querySelector('.fan'); const l=parseFloat(nf.style.left)-parseFloat(st.style.left), t=parseFloat(nf.style.top)-parseFloat(st.style.top); nf.style.left=(l+st.offsetWidth/2)+'px'; nf.style.top=(t+st.offsetHeight/2)+'px'; } });
+  const rg=document.querySelector('.ring'); rg.classList.toggle('rev',v.dir!==1);
+}
+function layoutHand(){
+  const h=$('hand'); const els=[...h.children]; const k=els.length; if(!k) return;
+  const cw=els[0].offsetWidth; const W=h.clientWidth-40;
+  const step=k>1?Math.min(cw*0.82,(W-cw)/(k-1)):0;
+  const rs=Math.min(3,28/k);
+  els.forEach((el,j)=>{ const o=j-(k-1)/2; el.style.marginLeft=j?(step-cw)+'px':'0'; el.style.setProperty('--r',(o*rs)+'deg'); el.style.setProperty('--y',Math.min(18,o*o*rs*0.3)+'px'); el.style.zIndex=j; });
+}
+window.addEventListener('resize',()=>{ if(S.view&&S.view.phase==='play'){ renderSeats(S.view); layoutHand(); } });
+function splash(text,sub,col,red){ const d=document.createElement('div'); d.className='splash'+(red?' red':''); d.style.setProperty('--pc',col||'#222'); d.innerHTML=`<div class="big">${esc(text)}</div>${sub?`<div class="sub">${esc(sub)}</div>`:''}`; document.body.appendChild(d); setTimeout(()=>d.remove(),1900); }
 function render(v){
+  if(v.gid!==S.gid){ S.gid=v.gid; S.lastEventK=0; }
+  const evs=(v.events||[]).filter(e=>e.k>S.lastEventK);
+  if(evs.length) S.lastEventK=evs[evs.length-1].k;
+  const handRects={};
+  for(const e of evs) if(e.type==='play'&&e.who===v.me) for(const c of e.cards){ const el=$('hand').querySelector(`[data-id="${c.id}"]`); if(el) handRects[c.id]=el.getBoundingClientRect(); }
   S.view=v;
   const myTurn=v.turn===v.me && v.winner==null;
   // プレイヤー
-  $('players').innerHTML=v.players.map((p,i)=>`<div class="pchip ${i===v.turn?'turn':''} ${i===v.me?'me':''}">${p.cpu?'🤖':'🧑'} ${esc(p.name)} <span class="n">${p.count}</span>${p.count===1&&p.declared?'<span class="kw">ANO!</span>':''}</div>`).join('');
-  $('dirIcon').textContent=v.dir===1?'⟳':'⟲';
+  renderSeats(v);
   // 場
   $('topCard').innerHTML=cardHTML(v.top,'big');
+  const bl=$('byline');
+  if(v.lastBy!=null){ bl.style.setProperty('--pc',pcol(v.lastBy)); bl.innerHTML=`<span class="dot">●</span> ${esc(v.players[v.lastBy].name)}${v.lastBy===v.me?'（あなた）':''} が出した`; }
+  else { bl.style.setProperty('--pc','#555'); bl.textContent='🚉 出発駅'; }
   const tl=linesOf(v.top.station).filter(l=>(v.active||LINE_ORDER).includes(l));
   $('topLines').innerHTML = v.top.station
-    ? `<div style="width:100%;font-weight:900;margin-bottom:4px">${esc(v.top.station)}駅</div>`+tl.map(lineChip).join('')
-    : `<div style="width:100%;font-weight:900">乗車券（路線指定）</div>`;
-  if(v.top.station && !v.requiredLine){ const d=numDigit(v.top.code); const extra=[]; if(v.rules?.digit && d!=null && v.top.type!=='depot') extra.push(`駅ナンバー末尾「${d}」のカード`); if(v.rules?.company) extra.push('同じ会社の路線'); if(extra.length) $('topLines').innerHTML+=`<div class="muted" style="width:100%;margin-top:6px">＋ ${extra.join('・')}も出せます</div>`; }
-  if(v.requiredLine){ $('reqLine').classList.remove('hidden'); $('reqLine').innerHTML=`🎫 乗車券で指定中：${lineChip(v.requiredLine)} のカードのみ出せます`; }
+    ? tl.map(lineChip).join('')
+    : '';
+  if(v.top.station && !v.requiredLine){ const d=numDigit(v.top.code); const extra=[]; if(v.rules?.digit && d!=null && v.top.type!=='depot') extra.push(`駅ナンバー末尾「${d}」のカード`); if(v.rules?.company) extra.push('同じ会社の路線'); if(extra.length) $('topLines').innerHTML+=`<div class="muted" style="width:100%;text-align:center;font-size:11px">＋ ${extra.join('・')}も出せます</div>`; }
+  if(v.requiredLine){ $('reqLine').classList.remove('hidden'); $('reqLine').innerHTML=`🎫 指定：${lineChip(v.requiredLine)} のみ`; }
   else $('reqLine').classList.add('hidden');
   $('deckCount').textContent=`残り${v.deckCount}枚`;
   $('log').innerHTML=v.log.slice().reverse().map(s=>`<div>${esc(s)}</div>`).join('');
@@ -673,6 +814,7 @@ function render(v){
     return cardHTML(c,(pl?'playable':(myTurn?'dim':''))+(v.drawn===c.id?' drawn':''));
   }).join('');
   $('hand').querySelectorAll('.card.playable').forEach(el=>el.onclick=()=>onCardClick(el.dataset.id));
+  layoutHand();
   // ボタン
   const me=v.players[v.me];
   $('deck').classList.toggle('can',myTurn&&!v.drawn&&!v.playable.length);
@@ -680,16 +822,55 @@ function render(v){
   const canKw=myTurn && v.hand.length>=2 && v.hand.length<=3;
   $('btnKw').disabled=!canKw || me.declared;
   $('btnKw').classList.toggle('on',me.declared);
-  $('btnKw').textContent=me.declared?'宣言済み':'ANO!';
+  $('btnKw').textContent=me.declared?'宣言済':'ANO!';
   $('btnCatch').classList.toggle('hidden',!(v.vuln!=null && v.vuln!==v.me && v.winner==null));
   // イベント
-  for(const e of v.events||[]){
-    if(e.k<=S.lastEventK) continue; S.lastEventK=e.k;
-    if(e.type==='kw') toast(`${e.who}「ANO!」`);
-    if(e.type==='catch') toast(`指摘！ ${e.who} +2枚`);
-  }
+  playEvents(v,evs,handRects);
   // 勝利
   if(v.winner!=null) showResult(v);
+}
+function playEvents(v,evs,handRects){
+  const plays=evs.filter(e=>e.type==='play');
+  const last=plays[plays.length-1];
+  if(plays.length){ $('topCard').style.visibility='hidden'; clearTimeout(S.revealT); S.revealT=setTimeout(()=>$('topCard').style.visibility='',3000); }
+  let delay=0;
+  for(const e of evs){
+    if(e.type==='play'){
+      e.cards.forEach((c,j)=>setTimeout(()=>flyCard(v,e,c,handRects[c.id],e===last&&j===e.cards.length-1),delay+j*260));
+      delay+=350+e.cards.length*260;
+    } else if(e.type==='draw'){ setTimeout(()=>flyDraw(v,e),delay); delay+=200; }
+    else if(e.type==='kw'){ const wi=v.players.findIndex(p=>p.name===e.who); setTimeout(()=>splash('ANO!',e.who,wi>=0?pcol(wi):null),delay); }
+    else if(e.type==='catch') setTimeout(()=>splash('指摘！',`${e.who} +2枚`,'#c4122f',true),delay);
+  }
+}
+function flashChip(i){ const ch=plateEl(i); if(!ch) return; ch.classList.remove('flash'); void ch.offsetWidth; ch.classList.add('flash'); }
+function flyCard(v,e,c,fromRect,isLast){
+  const tgt=$('topCard').firstElementChild; if(!tgt) return;
+  const to=tgt.getBoundingClientRect();
+  let from=fromRect; if(!from){ const ch=chipEl(e.who); from=(ch||$('deck')).getBoundingClientRect(); }
+  flashChip(e.who);
+  const w=document.createElement('div'); w.className='fly';
+  w.style.left=to.left+'px'; w.style.top=to.top+'px'; w.style.setProperty('--pc',pcol(e.who));
+  w.innerHTML=cardHTML(c,'big')+`<div class="who">${esc(v.players[e.who].name)}${e.who===v.me?'（あなた）':''}</div>`;
+  const sc=Math.min(1,Math.max(.25,from.width/to.width));
+  const dx=from.left+from.width/2-to.left-to.width*sc/2, dy=from.top+from.height/2-to.top-to.height*sc/2;
+  w.style.transform=`translate(${dx}px,${dy}px) scale(${sc}) rotate(-14deg)`; w.style.opacity='.3';
+  document.body.appendChild(w);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ w.style.transform='none'; w.style.opacity='1'; }));
+  setTimeout(()=>{ if(isLast){ $('topCard').style.visibility=''; clearTimeout(S.revealT);} w.classList.add('land'); },650);
+  setTimeout(()=>w.remove(),1600);
+}
+function flyDraw(v,e){
+  const dr=$('deck').getBoundingClientRect();
+  const tEl=e.who===v.me?$('hand'):chipEl(e.who); if(!tEl) return;
+  const to=tEl.getBoundingClientRect();
+  const tx=to.left+to.width/2, ty=e.who===v.me?to.top+40:to.top+to.height/2;
+  const sx=dr.left+dr.width/2, sy=dr.top+dr.height/2;
+  const d=document.createElement('div'); d.className='flydraw'; d.textContent='+'+e.n;
+  d.style.left=sx+'px'; d.style.top=sy+'px';
+  document.body.appendChild(d);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ d.style.transform=`translate(${tx-sx}px,${ty-sy}px) scale(.45)`; d.style.opacity='.2'; }));
+  setTimeout(()=>{ d.remove(); flashChip(e.who); },580);
 }
 function sortKey(c){
   const order={ticket:9000,gate:8000};
@@ -746,6 +927,8 @@ $('btnHost').onclick=hostRoom;
 $('btnJoin').onclick=joinRoom;
 $('btnSolo').onclick=soloGame;
 $('btnRules').onclick=showRules; $('btnRules2').onclick=showRules;
+$('btnLog').onclick=()=>$('infoPanel').classList.toggle('closed');
+$('infoPanel').classList.add('closed');
 $('btnAddCpu').onclick=()=>{ if(S.roster.length>=6) return; const names=['しまはま','さがわ','みかわ','ほしかげ','ありた','きょうほく']; const used=S.roster.map(r=>r.name); const nm='CPU '+(names.find(n=>!used.includes('CPU '+n))||'?'); S.roster.push({name:nm,cpu:true}); broadcastLobby(); };
 $('btnStart').onclick=startGame;
 $('btnLeave').onclick=()=>location.href=location.pathname;
