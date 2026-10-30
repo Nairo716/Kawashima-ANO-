@@ -167,6 +167,19 @@ input[type=text]{background:#0d1828;border:1px solid var(--line);color:var(--tex
 .cbub.below::after{bottom:auto;top:-10px;border-top:0;border-bottom:8px solid var(--pc)}
 @keyframes cb{0%{opacity:0;margin-top:8px}8%{opacity:1;margin-top:0}85%{opacity:1}100%{opacity:0}}
 @media (max-width:760px){.chatbtn{bottom:236px;left:8px;width:42px;height:42px;font-size:18px}.chatmenu{bottom:284px;left:8px}.chatmenu button{font-size:13px;padding:6px 12px}}
+.tmbtn{border:none;border-radius:999px;color:#fff;font-weight:900;font-size:11px;padding:2px 10px;margin-left:6px;cursor:pointer;font-family:inherit}
+.tmbtn:disabled{cursor:default}
+.plate .tmb{position:absolute;left:-14px;bottom:-6px;z-index:3;color:#fff;font-weight:900;font-size:11px;padding:1px 6px;border-radius:999px;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.4)}
+.plate.tm .av{outline:4px solid var(--tc);outline-offset:1px}
+.seat.fin .av{filter:grayscale(.7) brightness(.7)}
+.plate .finb{position:absolute;top:28%;left:50%;transform:translateX(-50%) rotate(-12deg);background:#fff;color:#111;font-weight:900;font-size:12px;padding:1px 8px;border-radius:6px;white-space:nowrap;z-index:4;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.mates{position:absolute;left:12px;top:48px;z-index:19;max-width:min(560px,46vw);background:rgba(10,22,40,.85);border:2px solid var(--tc);border-radius:12px;padding:6px 8px;backdrop-filter:blur(4px)}
+.mates .mh{font-size:12px;font-weight:900;margin:2px 0 4px;display:flex;align-items:center;gap:6px;cursor:pointer}
+.mates .mrow{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px}
+.mates.closed .mrow{display:none}
+.mc{width:55px;height:80px;position:relative;flex:0 0 auto}
+.mc .card{transform:scale(.5);transform-origin:top left;position:absolute;left:0;top:0;box-shadow:0 2px 4px rgba(0,0,0,.4)}
+@media (max-width:760px){.mates{top:44px;left:8px;max-width:58vw}.mc{width:34px;height:50px}.mc .card{transform:scale(.405)}}
 .flyback{position:fixed;z-index:39;width:40px;height:58px;margin:-29px 0 0 -20px;border-radius:6px;border:2px solid #fff;background:repeating-linear-gradient(45deg,#1f4f8f 0 6px,#1a4176 6px 12px);pointer-events:none;transition:transform .7s cubic-bezier(.4,0,.2,1)}
 .stlist{font-size:12px;color:var(--sub);line-height:1.6;margin:2px 0 8px}
 @media (max-width:600px){
@@ -339,6 +352,7 @@ input[type=text]{background:#0d1828;border:1px solid var(--line);color:var(--tex
     <svg class="ring" viewBox="0 0 100 100" preserveAspectRatio="none"><ellipse id="ringE" cx="50" cy="43" rx="27" ry="26" vector-effect="non-scaling-stroke"/></svg>
     <div class="hud"><span class="title">ANO KAWASHIMA</span><button class="btn ghost sm" id="btnRules2">ルール</button><button class="btn ghost sm" id="btnLog">ログ</button></div>
     <div class="info" id="infoPanel"><div class="log" id="log"></div></div>
+    <div class="mates hidden" id="mates"></div>
     <div id="seats"></div>
     <div class="center" id="center">
       <div class="pile">
@@ -481,7 +495,21 @@ class Engine{
   addLog(s){this.log.push(s); if(this.log.length>60) this.log.shift()}
   event(e){this.events.push({...e,k:++this.seq})}
   matchLines(){return this.requiredLine ? [this.requiredLine] : linesOf(this.top.station).filter(l=>this.active.includes(l))}
-  next(k=1){const n=this.players.length;return ((this.turn+this.dir*k)%n+n)%n}
+  next(k=1){ const n=this.players.length; let i=this.turn, c=0, g=0;
+    while(c<k && g<n*4){ i=((i+this.dir)%n+n)%n; g++; if(!this.players[i].finished) c++; }
+    return i; }
+  activeIdx(){ return this.players.map((q,i)=>i).filter(i=>!this.players[i].finished); }
+  isMate(a,b){ return !!this.rules.team && a!==b && this.players[a]?.team===this.players[b]?.team; }
+  // 手札がなくなったとき。trueならゲーム終了
+  onEmpty(pi){
+    const p=this.players[pi];
+    if(!this.rules.team){ this.winner=pi; this.addLog(`🏆 ${p.name} さんが上がり！ 終点到着！`); this.event({type:'win',who:p.name}); return true; }
+    p.finished=true; p.declared=false; if(this.vuln===pi) this.vuln=null;
+    if(this.players.filter(q=>q.team===p.team).every(q=>q.finished)){
+      this.winner=pi; this.winTeam=p.team; this.addLog(`🏆 ${p.name} さんが上がり！ ${TEAM[p.team].name}チーム全員到着で勝利！`); this.event({type:'win',who:p.name}); return true;
+    }
+    this.addLog(`🏁 ${p.name} さんが上がり！ 残りの味方を応援しよう`); this.event({type:'finish',who:pi}); return false;
+  }
   drawCards(p,k){
     const got=[];
     for(let i=0;i<k;i++){
@@ -548,7 +576,11 @@ class Engine{
     if(this.lastBy===pi) this.lastBy=null; else if(this.lastBy>pi) this.lastBy--;
     if(this.winner!=null && this.winner>pi) this.winner--;
     this.addLog(`🚪 ${p.name} さんが退出しました`);
+    if(this.winner==null && this.rules.team){
+      for(const t of [0,1]) if(!this.players.some(q=>q.team===t)){ const w=this.players.findIndex(q=>q.team!==t); if(w>=0){ this.winner=w; this.winTeam=this.players[w].team; this.addLog(`🏆 ${TEAM[this.winTeam].name}チームの勝ち！`);} }
+    }
     if(m===1 && this.winner==null){ this.winner=0; this.addLog(`🏆 ${this.players[0].name} さんの勝ち！`); }
+    if(this.winner==null && this.players[this.turn]?.finished) this.turn=this.next(1);
   }
   playableIds(pi){
     const p=this.players[pi];
@@ -562,6 +594,7 @@ class Engine{
     const p=this.players[pi];
     if(a.type==='catch'){
       if(this.vuln==null || this.vuln===pi) return '指摘できません';
+      if(this.isMate(pi,this.vuln)) return '味方は指摘できません';
       const v=this.players[this.vuln];
       if(v.hand.length!==1 || v.declared){this.vuln=null;return '指摘できません'}
       this.drawCards(v,2); this.addLog(`🚨 ${p.name} さんが指摘！ ${v.name} さんはANO!宣言忘れで2枚追加`);
@@ -588,7 +621,7 @@ class Engine{
       p.hand=p.hand.filter(c=>c!==card); this.discard.push(card); this.drawn=null; this.requiredLine=null;
       this.lastBy=pi; this.event({type:'play',who:pi,cards:[{...card}],jump:true});
       this.addLog(`⚡ ${p.name}：ジャンプイン！ ${card.station}駅の改札を通過`);
-      if(p.hand.length===0){ this.winner=pi; this.addLog(`🏆 ${p.name} さんが上がり！ 終点到着！`); this.event({type:'win',who:p.name}); return null; }
+      if(p.hand.length===0 && this.onEmpty(pi)) return null;
       if(p.hand.length===1){ if(!p.declared){ this.vuln=pi; this.vulnSeq=(this.vulnSeq||0)+1; } } else p.declared=false;
       this.turn=pi; this.endTurn(1); return null;
     }
@@ -634,18 +667,17 @@ class Engine{
       else this.addLog(`${p.name}：${LINES[card.line].name} ${card.station}${card.type==='skip'?'【通過待ち】':card.type==='rev'?'【当駅止まり】':''}`);
       if(card.type==='ticket') this.requiredLine=a.line; else this.requiredLine=null;
       // 勝利
-      if(p.hand.length===0){
-        this.winner=pi; this.addLog(`🏆 ${p.name} さんが上がり！ 終点到着！`); this.event({type:'win',who:p.name}); return null;
-      }
+      if(p.hand.length===0 && this.onEmpty(pi)) return null;
       // 0・7 手札交換
-      const sd=(this.rules.swap && topCard.code && this.players.length>1)?numDigit(topCard.code):null;
+      const act=this.activeIdx();
+      const sd=(this.rules.swap && topCard.code && act.length>1 && !p.finished)?numDigit(topCard.code):null;
       if(sd==='0'||sd==='7'){
         const n0=this.players.length;
         if(sd==='0'){
-          const hs=this.players.map(q=>q.hand); this.players.forEach((q,i)=>q.hand=hs[(i-1+n0)%n0]);
+          const hs=act.map(i=>this.players[i].hand); act.forEach((i,k)=>this.players[i].hand=hs[(k-1+act.length)%act.length]);
           this.addLog('🔄 末尾0！ 全員が時計回りに手札を交換'); this.event({type:'swap',kind:0});
         } else {
-          let t=+a.target; if(!(t>=0&&t<n0&&t!==pi)) t=this.players.map((q,i)=>i).filter(i=>i!==pi).sort((x,y)=>this.players[x].hand.length-this.players[y].hand.length)[0];
+          let t=+a.target; if(!(t>=0&&t<n0&&t!==pi&&!this.players[t].finished)) t=act.filter(i=>i!==pi).sort((x,y)=>this.players[x].hand.length-this.players[y].hand.length)[0];
           const tp=this.players[t]; [p.hand,tp.hand]=[tp.hand,p.hand];
           this.addLog(`🔄 末尾7！ ${p.name} さんと ${tp.name} さんが手札を交換`); this.event({type:'swap',kind:7,a:pi,b:t});
         }
@@ -658,7 +690,7 @@ class Engine{
       if(eff==='skip'){ this.addLog(`⏭ ${this.players[this.next(1)].name} さんは通過待ちで飛ばされます`); this.endTurn(2); }
       else if(eff==='rev'){
         this.dir*=-1; this.addLog('🔁 当駅止まり！ 進行方向が逆になりました');
-        if(n===2) this.endTurn(2); else this.endTurn(1);
+        if(this.activeIdx().length===2) this.endTurn(2); else this.endTurn(1);
       }
       else if(eff==='depot'){
         this.pending=(this.pending||0)+2;
@@ -673,7 +705,7 @@ class Engine{
   view(pi){
     return {
       phase:'play', gid:this.gid, lastBy:this.lastBy, me:pi, turn:this.turn, dir:this.dir, winner:this.winner,
-      players:this.players.map(p=>({name:p.name,count:p.hand.length,cpu:!!p.cpu,declared:p.declared,icon:p.icon})),
+      players:this.players.map((p,i)=>({name:p.name,count:p.hand.length,cpu:!!p.cpu,declared:p.declared,icon:p.icon,team:p.team,finished:!!p.finished,hand:this.isMate(pi,i)?p.hand:undefined})), teamMode:!!this.rules.team, winTeam:this.winTeam,
       hand:this.players[pi].hand, top:this.top, requiredLine:this.requiredLine, drawn:this.turn===pi?this.drawn:null,
       playable:this.playableIds(pi), jumpable:this.jumpIds(pi), pending:this.pending||0, lineAvail:this.lineAvail(), canDeclare:this.canDeclare(pi), vuln:this.vuln, active:this.active, rules:this.rules, deckCount:this.deck.length, log:this.log.slice(-30), events:this.events.slice(-10)
     };
@@ -685,7 +717,7 @@ class Engine{
     if(p.hand.length>1 && this.canDeclare(pi) && Math.random()<0.85) return {type:'declare'};
     if(!ids.length) return this.drawn ? {type:'pass'} : {type:'draw'};
     const cards=p.hand.filter(c=>ids.includes(c.id));
-    const nextCount=this.players[this.next(1)].hand.length;
+    const nx=this.next(1); const nextCount=this.isMate(pi,nx)?99:this.players[nx].hand.length;
     const score=c=>{
       let s=Math.random();
       if(c.type==='gate') s+=6;
@@ -706,7 +738,7 @@ class Engine{
       let best=Object.keys(cnt).filter(l=>okL.includes(l)).sort((a,b)=>cnt[b]-cnt[a])[0] || okL[Math.floor(Math.random()*okL.length)];
       return {type:'play',id:c.id,line:best};
     }
-    const tgt=()=>this.players.map((q,i)=>i).filter(i=>i!==pi).sort((x,y)=>this.players[x].hand.length-this.players[y].hand.length)[0];
+    const tgt=()=>{ const c=this.activeIdx().filter(i=>i!==pi); const o=c.filter(i=>!this.isMate(pi,i)); return (o.length?o:c).sort((x,y)=>this.players[x].hand.length-this.players[y].hand.length)[0]; };
     if(c.type==='gate'){ const pr=this.gatePairs(pi,c); return {type:'play',id:c.id,pair:pr[0]?.id,target:tgt()}; }
     return {type:'play',id:c.id,target:tgt()};
   }
@@ -716,6 +748,7 @@ class Engine{
    ネットワーク / セッション
    ========================================================= */
 const CHAT=['あの？','ちがうが？','香るやつしかおらん','ゆずりんごのおばあちゃんおいしいもんね','おお','うお','どわー'];
+const TEAM=[{name:'赤',color:'#ff4d5e'},{name:'青',color:'#3d9bff'}];
 const PREFIX='kawashima-uno-v1-';
 const S={ settings:{preset:'center',lines:PRESETS[0].lines.slice(),rules:{digit:true,company:false,swap:true}}, role:null, peer:null, conns:{}, hostConn:null, roster:[], engine:null, myName:'', code:'', view:null, cpuTimer:null, catchTimer:null, lastEventK:0 };
 const $=id=>document.getElementById(id);
@@ -757,7 +790,7 @@ function onHostData(conn,d){
     if(S.engine){ conn.send({t:'err',m:'ゲームはすでに開始しています'}); setTimeout(()=>conn.close(),500); return; }
     if(S.roster.length>=6){ conn.send({t:'err',m:'満員です'}); setTimeout(()=>conn.close(),500); return; }
     S.conns[conn.peer]=conn;
-    S.roster.push({name:String(d.name).slice(0,10),icon:sanIcon(d.icon),cpu:false,peer:conn.peer});
+    S.roster.push({name:String(d.name).slice(0,10),icon:sanIcon(d.icon),cpu:false,peer:conn.peer}); teamFix();
     broadcastLobby();
   } else if(d.t==='act'){
     if(!S.engine) return;
@@ -784,12 +817,22 @@ function hostKick(pi){
   syncAll();
 }
 function broadcastLobby(){
-  const lv={phase:'lobby',roster:S.roster.map(r=>({name:r.name,cpu:r.cpu,icon:r.icon})),code:S.code,settings:S.settings};
+  const lv={phase:'lobby',roster:S.roster.map(r=>({name:r.name,cpu:r.cpu,icon:r.icon,team:r.team})),code:S.code,settings:S.settings};
   for(const c of Object.values(S.conns)){ try{ c.send({t:'view',v:lv}); }catch(e){} }
   renderLobby();
 }
+function teamFix(){ // チーム未設定のメンバーを少ない方へ
+  for(const r of S.roster) if(r.team!==0&&r.team!==1){ const c0=S.roster.filter(x=>x.team===0).length, c1=S.roster.filter(x=>x.team===1).length; r.team=c0<=c1?0:1; }
+}
 function startGame(){
   if(S.roster.length<2){ alert('2人以上必要です（CPUを追加できます）'); return; }
+  if(S.settings.rules.team){
+    teamFix();
+    const A=S.roster.filter(r=>r.team===0), B=S.roster.filter(r=>r.team===1);
+    if(!A.length||!B.length){ alert('チーム戦は赤・青それぞれ1人以上必要です'); return; }
+    const o=[]; for(let i=0;i<Math.max(A.length,B.length);i++){ if(A[i]) o.push(A[i]); if(B[i]) o.push(B[i]); } // 敵味方交互に座る
+    S.roster=o;
+  }
   S.engine=new Engine(S.roster,{lines:S.settings.lines,rules:{...S.settings.rules}});
   S.lastEventK=0;
   show('game'); syncAll();
@@ -810,7 +853,7 @@ function scheduleCpu(){
     S.catchRolled=E.vulnSeq;
     const v=E.vuln;
     if(E.players[v].cpu && Math.random()<0.5) setTimeout(()=>{ if(E.vuln===v && E.canDeclare(v)){ E.act(v,{type:'declare'}); syncAll(); } },1800+Math.random()*2500);
-    const catchers=E.players.map((p,i)=>i).filter(i=>i!==v && E.players[i].cpu);
+    const catchers=E.players.map((p,i)=>i).filter(i=>i!==v && E.players[i].cpu && !E.isMate(i,v));
     if(catchers.length && Math.random()<0.6){
       S.catchTimer=setTimeout(()=>{S.catchTimer=null; if(E.vuln===v){E.act(catchers[Math.floor(Math.random()*catchers.length)],{type:'catch'}); syncAll();}},2200+Math.random()*2500);
     }
@@ -862,6 +905,7 @@ function soloGame(){
   const cpuNames=['しまはま','さがわ','みかわ','ほしかげ','ありた'];
   S.roster=[{name:S.myName,icon:S.icon,cpu:false,peer:'host'}];
   for(let i=0;i<n;i++) S.roster.push({name:'CPU '+cpuNames[i],cpu:true});
+  S.roster.forEach((r,i)=>r.team=i%2);
   startGame();
 }
 
@@ -895,6 +939,7 @@ function settingsHTML(st,editable){
    <div class="lchk">${LINE_ORDER.map(id=>`<label><input type="checkbox" data-line="${id}" ${st.lines.includes(id)?'checked':''} ${dis}>${lineChip(id)}</label>`).join('')}</div>
    <label><input type="checkbox" data-r="digit" ${st.rules.digit?'checked':''} ${dis}>駅ナンバーの末尾の数字が同じなら出せる（UNOの数字ルール）</label><br>
    <label><input type="checkbox" data-r="company" ${st.rules.company?'checked':''} ${dis}>同じ鉄道会社の路線どうしも出せる</label><br>
+   <label><input type="checkbox" data-r="team" ${st.rules.team?'checked':''} ${dis}>🤝 チーム戦（赤・青の2チーム。味方の手札が見える。チーム全員が上がったら勝ち）</label><br>
    <label><input type="checkbox" data-r="infinite" ${st.rules.infinite?'checked':''} ${dis}>♾ 無限モード（山札が切れたら場のカードを切り直して補充。OFFなら山札切れで引き分け）</label><br>
    <label><input type="checkbox" data-r="swap" ${st.rules.swap?'checked':''} ${dis}>駅ナンバー末尾0：全員が時計回りに手札交換／末尾7：指名した人と手札交換</label>
    <div class="muted">路線数が多いほど出せるカードが減り長期戦になります。4〜6路線がおすすめ。</div></div>`;
@@ -906,7 +951,7 @@ function renderSettings(){
     if(!editable) continue;
     el.querySelector('[data-s=preset]').onchange=e=>{const p=PRESETS.find(x=>x.id===e.target.value); S.settings.preset=e.target.value; if(p) S.settings.lines=p.lines.slice(); if(e.target.value==='all'){ S.settings.rules.company=true; S.settings.rules.infinite=true; } onSettings();};
     el.querySelectorAll('[data-line]').forEach(c=>c.onchange=()=>{const id=c.dataset.line; S.settings.lines=c.checked?LINE_ORDER.filter(l=>l===id||S.settings.lines.includes(l)):S.settings.lines.filter(l=>l!==id); if(S.settings.lines.length<2){S.settings.lines.push(id);} S.settings.preset='custom'; onSettings();});
-    el.querySelectorAll('[data-r]').forEach(c=>c.onchange=()=>{S.settings.rules[c.dataset.r]=c.checked; onSettings();});
+    el.querySelectorAll('[data-r]').forEach(c=>c.onchange=()=>{S.settings.rules[c.dataset.r]=c.checked; if(c.dataset.r==='team'&&c.checked) S.settings.rules.infinite=true; onSettings();});
   }
 }
 function onSettings(){ if(S.role==='host') broadcastLobby(); else renderSettings(); }
@@ -917,10 +962,12 @@ function renderLobby(){
   const v= isHost ? {roster:S.roster,code:S.code} : (S.lobbyView||{roster:[],code:S.code});
   $('lobbyCode').textContent=v.code;
   $('lobbyCount').textContent=v.roster.length;
-  $('lobbyList').innerHTML=v.roster.map((r,i)=>`<li><span><span class="li-av">${iconHTML(r.icon,r.cpu?'🤖':'🚃')}</span>${i===0?'👑 ':''}${esc(r.name)}${r.cpu?' <span class="muted">(CPU)</span>':''}</span>${isHost&&i>0?`<button class="btn ${r.cpu?'ghost':'danger'}" data-rm="${i}" style="padding:4px 10px">${r.cpu?'外す':'キック'}</button>`:''}</li>`).join('');
+  const tmOn=!!(isHost?S.settings:(S.lobbyView?.settings||S.settings)).rules.team; if(isHost&&tmOn) teamFix();
+  $('lobbyList').innerHTML=v.roster.map((r,i)=>`<li><span><span class="li-av">${iconHTML(r.icon,r.cpu?'🤖':'🚃')}</span>${i===0?'👑 ':''}${esc(r.name)}${r.cpu?' <span class="muted">(CPU)</span>':''}${tmOn?` <button class="tmbtn" data-tm="${i}" style="background:${TEAM[r.team??0].color}" ${isHost?'':'disabled'}>${TEAM[r.team??0].name}チーム</button>`:''}</span>${isHost&&i>0?`<button class="btn ${r.cpu?'ghost':'danger'}" data-rm="${i}" style="padding:4px 10px">${r.cpu?'外す':'キック'}</button>`:''}</li>`).join('');
   $('hostCtl').classList.toggle('hidden',!isHost);
   $('guestWait').classList.toggle('hidden',isHost);
   renderSettings();
+  $('lobbyList').querySelectorAll('[data-tm]').forEach(b=>b.onclick=()=>{ const r=S.roster[+b.dataset.tm]; if(!r) return; r.team=r.team===0?1:0; broadcastLobby(); });
   $('lobbyList').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ const r=S.roster[+b.dataset.rm]; if(!r) return;
     if(!r.cpu && !confirm(`${r.name} さんを部屋から退出させますか？`)) return;
     if(r.peer && S.conns[r.peer]){ kickConn(r.peer); }
@@ -939,8 +986,9 @@ function renderSeats(v){
   let html='';
   v.players.forEach((p,i)=>{
     const sIdx=((i-v.me)%n+n)%n;
-    const plate=`<div class="plate" style="--pc:${pcol(i)}"><div class="nm">${esc(p.name)}</div><div class="av">${iconHTML(p.icon,p.cpu?'🤖':AVA[i%AVA.length])}</div>${S.role==='host'&&i!==v.me?`<button class="kick" data-kick="${i}" title="退出させる">✕</button>`:''}<div class="cnt">${p.count}</div>${p.count===1&&p.declared?'<div class="anob">ANO!</div>':''}</div>`;
-    if(sIdx===0){ html+=`<div class="seat mine ${i===v.turn?'turn':''}" id="seat${i}">${plate}</div>`; return; }
+    const tmc=v.teamMode&&p.team!=null?TEAM[p.team]:null;
+    const plate=`<div class="plate ${tmc?'tm':''}" style="--pc:${pcol(i)};--tc:${tmc?tmc.color:'transparent'}">${tmc?`<div class="tmb" style="background:${tmc.color}">${tmc.name}${v.players[v.me].team===p.team&&i!==v.me?'・味方':''}</div>`:''}${p.finished?'<div class="finb">🏁 上がり</div>':''}<div class="nm">${esc(p.name)}</div><div class="av">${iconHTML(p.icon,p.cpu?'🤖':AVA[i%AVA.length])}</div>${S.role==='host'&&i!==v.me?`<button class="kick" data-kick="${i}" title="退出させる">✕</button>`:''}<div class="cnt">${p.count}</div>${p.count===1&&p.declared?'<div class="anob">ANO!</div>':''}</div>`;
+    if(sIdx===0){ html+=`<div class="seat mine ${i===v.turn?'turn':''} ${p.finished?'fin':''}" id="seat${i}">${plate}</div>`; return; }
     const span=Math.min(210,120*(n-2)); const opp=n-1;
     const ang=(opp===1?270:165+ (210-span)/2 + (sIdx-1)*span/(opp-1))*Math.PI/180;
     const sx=cx+rx*Math.cos(ang), sy=cy+ry*Math.sin(ang)*(Math.sin(ang)<0?1:0.9);
@@ -948,7 +996,7 @@ function renderSeats(v){
     const rot=ang*180/Math.PI-90+180;
     const k=Math.min(p.count,14), step=Math.min(9,80/Math.max(k,1));
     let fan=''; for(let j=0;j<k;j++) fan+=`<div class="bk" style="transform:rotate(${(j-(k-1)/2)*step}deg)"></div>`;
-    html+=`<div class="seat ${i===v.turn?'turn':''}" id="seat${i}" style="left:${Math.min(W-(mob?66:80),Math.max(mob?44:70,sx))}px;top:${Math.max(mob?70:62,sy-(mob&&Math.abs(Math.cos(ang))>0.5?80:0))}px">${plate}</div>`
+    html+=`<div class="seat ${i===v.turn?'turn':''} ${p.finished?'fin':''}" id="seat${i}" style="left:${Math.min(W-(mob?66:80),Math.max(mob?44:70,sx))}px;top:${Math.max(mob?70:62,sy-(mob&&Math.abs(Math.cos(ang))>0.5?80:0))}px">${plate}</div>`
         + `<div class="fan" id="fan${i}" style="left:${fx}px;top:${fy}px;transform:rotate(${rot}deg)">${fan}</div>`;
   });
   $('seats').innerHTML=html;
@@ -958,6 +1006,15 @@ function renderSeats(v){
   // fanをseat内参照できるように
   v.players.forEach((p,i)=>{ const f=$('fan'+i), st=$('seat'+i); if(f&&st){ st.appendChild(f.cloneNode(true)); f.remove(); const nf=st.querySelector('.fan'); const l=parseFloat(nf.style.left)-parseFloat(st.style.left), t=parseFloat(nf.style.top)-parseFloat(st.style.top); nf.style.left=(l+st.offsetWidth/2)+'px'; nf.style.top=(t+st.offsetHeight/2)+'px'; } });
   const rg=document.querySelector('.ring'); rg.classList.toggle('rev',v.dir!==1);
+}
+function renderMates(v){
+  const el=$('mates');
+  const mates=v.teamMode?v.players.map((p,i)=>({...p,i})).filter(p=>p.i!==v.me&&p.team===v.players[v.me].team):[];
+  if(!mates.length){ el.classList.add('hidden'); return; }
+  el.classList.remove('hidden'); el.style.setProperty('--tc',TEAM[v.players[v.me].team].color);
+  el.innerHTML=mates.map(p=>`<div class="mh" data-mt>🤝 味方 ${esc(p.name)}（${p.count}枚）${p.finished?'🏁 上がり':''}${p.i===v.turn?' ▶ 番':''}</div><div class="mrow">${(p.hand||[]).slice().sort((a,b)=>sortKey(a)-sortKey(b)).map(c=>`<div class="mc">${cardHTML(c)}</div>`).join('')}</div>`).join('');
+  el.querySelectorAll('[data-mt]').forEach(h=>h.onclick=()=>{ el.classList.toggle('closed'); S.matesClosed=el.classList.contains('closed'); });
+  el.classList.toggle('closed',!!S.matesClosed);
 }
 function layoutHand(){
   const h=$('hand'); const els=[...h.children]; const k=els.length; if(!k) return;
@@ -977,7 +1034,7 @@ function render(v){
   S.view=v; CUR_SWAP=!!(v.rules&&v.rules.swap);
   const myTurn=v.turn===v.me && v.winner==null;
   // プレイヤー
-  renderSeats(v);
+  renderSeats(v); renderMates(v);
   // 場
   $('topCard').innerHTML=cardHTML(v.top,'big');
   const bl=$('byline');
@@ -995,6 +1052,8 @@ function render(v){
   // ステータス
   let st='';
   if(v.winner===-1) st='🚧 山札切れで引き分け（ここを押すと結果）';
+  else if(v.winner!=null && v.teamMode && v.winTeam!=null) st = v.players[v.me].team===v.winTeam ? `🏆 ${TEAM[v.winTeam].name}チームの勝ち！（ここを押すと結果）` : `🏁 ${TEAM[v.winTeam].name}チームの勝ち（ここを押すと結果）`;
+  else if(v.players[v.me].finished && v.winner==null) st = `🏁 上がり！ 味方を応援中… いまは ${v.players[v.turn].name} さんの番`;
   else if(v.winner!=null) st = v.winner===v.me ? '🏆 あなたの勝ち！終点到着！' : `🏁 ${v.players[v.winner].name} さんの勝ち`;
   else if(myTurn && v.pending>0) st = v.playable.length ? `🏭 +${v.pending}！ 車両基地を重ねるか、山札から${v.pending}枚引く` : `🏭 +${v.pending}！ 山札をクリックして${v.pending}枚引いてください`;
   else if((v.jumpable||[]).length) st = `⚡ ${v.top.station}駅の改札でジャンプインできます！`;
@@ -1016,7 +1075,7 @@ function render(v){
   $('btnKw').disabled=!v.canDeclare;
   $('btnKw').classList.toggle('on',me.declared);
   $('btnKw').textContent=me.declared?'宣言済':'ANO!';
-  const showCatch=v.vuln!=null && v.vuln!==v.me && v.winner==null; $('btnCatch').classList.toggle('hidden',!showCatch); if(showCatch) $('btnCatch').textContent=`🚨 ${v.players[v.vuln].name} さん ANO!言ってない！`;
+  const showCatch=v.vuln!=null && v.vuln!==v.me && v.winner==null && !(v.teamMode && v.players[v.vuln]?.team===v.players[v.me].team); $('btnCatch').classList.toggle('hidden',!showCatch); if(showCatch) $('btnCatch').textContent=`🚨 ${v.players[v.vuln].name} さん ANO!言ってない！`;
   // イベント
   playEvents(v,evs,handRects);
   // 勝利
@@ -1036,6 +1095,7 @@ function playEvents(v,evs,handRects){
     else if(e.type==='kw'){ const wi=v.players.findIndex(p=>p.name===e.who); setTimeout(()=>splash('ANO!',e.who,wi>=0?pcol(wi):null),delay); }
     else if(e.type==='drawgame') setTimeout(()=>splash('引き分け','山札がなくなりました','#555',true),delay);
     else if(e.type==='emote') particles(v,e.who);
+    else if(e.type==='finish') setTimeout(()=>splash('上がり！',v.players[e.who]?.name||'',pcol(e.who)),delay);
     else if(e.type==='chat') chatBubble(v,e.who,CHAT[e.idx]);
     else if(e.type==='refill') setTimeout(()=>splash('山札補充','場のカードを切り直しました','#1f4f8f'),delay);
     else if(e.type==='swap'){ setTimeout(()=>swapAnim(v,e),delay); delay+=400; }
@@ -1132,9 +1192,9 @@ function onCardClick(id){
 function withTarget(a,eff,nPlayed){
   const v=S.view;
   if(!(v.rules&&v.rules.swap) || numDigit(eff.code)!=='7' || v.hand.length-nPlayed<=0 || v.players.length<2) return send(a);
-  const others=v.players.map((p,i)=>({...p,i})).filter(p=>p.i!==v.me);
+  const others=v.players.map((p,i)=>({...p,i})).filter(p=>p.i!==v.me && !p.finished);
   openModal(`<h2>🔄 末尾7：手札を交換する相手を選択</h2><p class="muted">出したあと、選んだ人と手札をまるごと交換します（あなたの残り ${v.hand.length-nPlayed} 枚）</p>
-   <div class="tgtgrid">${others.map(p=>`<button data-t="${p.i}" style="--pc:${pcol(p.i)}"><span class="ta">${iconHTML(p.icon,p.cpu?'🤖':AVA[p.i%AVA.length])}</span><span>${esc(p.name)}<br><small>手札 ${p.count} 枚</small></span></button>`).join('')}</div>
+   <div class="tgtgrid">${others.map(p=>`<button data-t="${p.i}" style="--pc:${pcol(p.i)}"><span class="ta">${iconHTML(p.icon,p.cpu?'🤖':AVA[p.i%AVA.length])}</span><span>${esc(p.name)}${v.teamMode?` <small style="color:${TEAM[p.team].color}">${TEAM[p.team].name}${p.team===v.players[v.me].team?'・味方':''}</small>`:''}<br><small>手札 ${p.count} 枚</small></span></button>`).join('')}</div>
    <button class="btn ghost" onclick="closeModal()">キャンセル</button>`);
   $('modalInner').querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{ closeModal(); send({...a,target:+b.dataset.t}); });
 }
@@ -1146,18 +1206,18 @@ function pickLine(id){
 function showResult(v){
   const ranking=v.players.map((p,i)=>({...p,i})).sort((a,b)=>a.count-b.count);
   const isHostLike=S.role!=='guest';
-  const head = v.winner===-1 ? `<h2>🚧 山札切れ</h2><p style="font-size:20px;font-weight:900">引き分け！</p>` : `<h2>🏁 終点です</h2><p style="font-size:20px;font-weight:900">${esc(v.players[v.winner].name)} さんの勝利！</p>`;
+  const head = (v.teamMode && v.winTeam!=null) ? `<h2>🏁 終点です</h2><p style="font-size:22px;font-weight:900;color:${TEAM[v.winTeam].color}">${TEAM[v.winTeam].name}チームの勝利！</p><p class="muted">${v.players.filter(p=>p.team===v.winTeam).map(p=>esc(p.name)).join('・')}</p>` : v.winner===-1 ? `<h2>🚧 山札切れ</h2><p style="font-size:20px;font-weight:900">引き分け！</p>` : `<h2>🏁 終点です</h2><p style="font-size:20px;font-weight:900">${esc(v.players[v.winner].name)} さんの勝利！</p>`;
   const btns = S.role==='host' ? '<button class="btn primary" id="btnRoom">🏠 部屋に戻る</button><button class="btn" id="btnAgain">すぐもう一度</button>'
              : S.role==='solo' ? '<button class="btn primary" id="btnAgain">もう一度遊ぶ</button>'
              : '<span class="muted">ホストが部屋に戻ると待合室へ移動します</span>';
   openModal(`${head}<ol>${ranking.map(p=>`<li>${esc(p.name)}：残り${p.count}枚</li>`).join('')}</ol><div class="row">${btns}<button class="btn ghost" onclick="closeModal()">盤面を見る</button><button class="btn ghost" onclick="location.href=location.pathname">タイトルへ</button></div>`);
   const r=$('btnRoom'); if(r) r.onclick=()=>{ closeModal(); backToRoom(); };
-  const b=$('btnAgain'); if(b) b.onclick=()=>{closeModal(); if(S.engine){ S.roster=S.engine.players.map(p=>({name:p.name.replace(/\(CPU\)$/,''),cpu:p.cpu,peer:p.peer,icon:p.icon})); } startGame(); };
+  const b=$('btnAgain'); if(b) b.onclick=()=>{closeModal(); if(S.engine){ S.roster=S.engine.players.map(p=>({name:p.name.replace(/\(CPU\)$/,''),cpu:p.cpu,peer:p.peer,icon:p.icon,team:p.team})); } startGame(); };
 }
 function backToRoom(){
   const E=S.engine; if(!E) return;
   clearTimeout(S.cpuTimer); clearTimeout(S.catchTimer); clearTimeout(S.jumpTimer); S.cpuTimer=S.catchTimer=S.jumpTimer=null;
-  S.roster=E.players.filter(p=>p.cpu || p.peer==='host' || S.conns[p.peer]).map(p=>({name:p.name.replace(/\(CPU\)$/,''),cpu:p.cpu,peer:p.peer,icon:p.icon}));
+  S.roster=E.players.filter(p=>p.cpu || p.peer==='host' || S.conns[p.peer]).map(p=>({name:p.name.replace(/\(CPU\)$/,''),cpu:p.cpu,peer:p.peer,icon:p.icon,team:p.team}));
   S.engine=null; S.view=null; show('lobby'); broadcastLobby();
 }
 function openModal(h){$('modalInner').innerHTML=h;$('modal').classList.remove('hidden')}
@@ -1176,6 +1236,7 @@ function showRules(){
   <h3>🟧 改札（オレンジ）</h3><p><b>⚡ジャンプイン：</b>場に改札と同じ駅が出たら、自分の番でなくても改札カード1枚をすぐ出せます。出した人の次の人から順番が続きます（車両基地の+が溜まっている間は不可）。自分の番なら、場と同じ駅の改札は1枚だけでも出せます。<br>改札と同じ駅名のカードを持っているとき、その2枚をまとめて出せます。場の駅とその改札の駅が同じ路線でつながっていれば出せ、一緒に出した駅カードが新しい場札になります。</p>
   <h3>🏭 車両基地（+2）</h3><p>次の人は山札から2枚引き、その番は休みです。ただし車両基地を持っていれば<b>路線が違っても</b>重ねて出せ、+2ずつ溜まって次の人へ回ります。場のいちばん上が車両基地なら、+を引き終わったあとでも別路線の車両基地を出せます。</p>
   <h3>🎫 乗車券</h3><p>路線に関係なくいつでも出せます。出した人は路線を1つ選び、次の人はその路線のカードを出します。<b>ANO!宣言後（最後の1枚）には出せません。</b>手札と山札に残っているカードが3枚以下の路線は指定できません。</p>
+  <h3>🤝 チーム戦（設定でON）</h3><p>赤・青の2チームに分かれ、敵と味方が交互に座ります（待合室でホストがチームバッジを押して入れ替え）。<b>味方の手札は左上に表示</b>されます。上がった人は抜けて順番が飛ばされ、<b>チーム全員が上がったら勝ち</b>。味方のANO!忘れは指摘できません。</p>
   <h3>🚧 山札切れ</h3><p>山札がなくなった時点で<b>引き分け</b>です。設定で<b>♾ 無限モード</b>をONにすると、いちばん上以外の場のカードを切り直して山札を補充し、決着がつくまで続きます。</p>
   <h3>✨ パーティクル</h3><p>自分の番ではないとき、左下の自分のアイコンをクリックするとパーティクルが出ます（ほかのプレイヤーにも見えます）。</p>
   <h3>📣 ANO!</h3><p>カードを出すと残り1枚になるときだけ、自分の番に「ANO!」ボタンを押せます（押してからカードを出す）。宣言せずに残り1枚になると、他のプレイヤーの画面に「ANO!言ってない！」ボタンが出て、押されると2枚追加。指摘される前なら、残り1枚の状態でANO!を押せばセーフです。</p>
@@ -1196,7 +1257,7 @@ $('chatMenu').querySelectorAll('[data-c]').forEach(b=>b.onclick=e=>{ e.stopPropa
 document.addEventListener('click',()=>$('chatMenu').classList.add('hidden'));
 $('btnLog').onclick=()=>$('infoPanel').classList.toggle('closed');
 $('infoPanel').classList.add('closed');
-$('btnAddCpu').onclick=()=>{ if(S.roster.length>=6) return; const names=['しまはま','さがわ','みかわ','ほしかげ','ありた','きょうほく']; const used=S.roster.map(r=>r.name); const nm='CPU '+(names.find(n=>!used.includes('CPU '+n))||'?'); S.roster.push({name:nm,cpu:true}); broadcastLobby(); };
+$('btnAddCpu').onclick=()=>{ if(S.roster.length>=6) return; const names=['しまはま','さがわ','みかわ','ほしかげ','ありた','きょうほく']; const used=S.roster.map(r=>r.name); const nm='CPU '+(names.find(n=>!used.includes('CPU '+n))||'?'); S.roster.push({name:nm,cpu:true}); teamFix(); broadcastLobby(); };
 $('btnStart').onclick=startGame;
 $('btnLeave').onclick=()=>location.href=location.pathname;
 $('btnCopy').onclick=()=>{ const url=location.origin+location.pathname+'?room='+S.code; navigator.clipboard?.writeText(url).then(()=>toastErr('コピーしました'),()=>prompt('このURLを共有してください',url)); };
