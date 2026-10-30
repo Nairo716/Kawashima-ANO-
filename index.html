@@ -151,6 +151,11 @@ input[type=text]{background:#0d1828;border:1px solid var(--line);color:var(--tex
 @keyframes jmp{to{margin-bottom:12px}}
 .pend{color:#ff5a6a;font-size:22px}
 .linegrid button:disabled{opacity:.35;cursor:not-allowed;filter:grayscale(.6)}
+.plate .av.emo{pointer-events:auto;cursor:pointer}
+.plate .av.emo:hover{transform:scale(1.06)}
+.plate .av.emo:active{transform:scale(.92)}
+.pt{position:fixed;z-index:65;pointer-events:none;transform:translate(-50%,-50%);font-weight:900;text-shadow:0 0 6px rgba(255,255,255,.6);animation:ptf 1s cubic-bezier(.15,.7,.4,1) forwards}
+@keyframes ptf{0%{transform:translate(-50%,-50%) scale(.4);opacity:1}70%{opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy) + 60px)) scale(1) rotate(var(--rot));opacity:0}}
 .flyback{position:fixed;z-index:39;width:40px;height:58px;margin:-29px 0 0 -20px;border-radius:6px;border:2px solid #fff;background:repeating-linear-gradient(45deg,#1f4f8f 0 6px,#1a4176 6px 12px);pointer-events:none;transition:transform .7s cubic-bezier(.4,0,.2,1)}
 .stlist{font-size:12px;color:var(--sub);line-height:1.6;margin:2px 0 8px}
 @media (max-width:600px){
@@ -368,25 +373,44 @@ const LINES_SRC = [
  {id:'S3',name:'地下鉄 千京門線',co:'川島地下鉄',mk:'③',color:'#4fb0aa',st:'301:緑が浜,302:徳梁,303:西町浦宿,304:千京門,305:城東,306:中上川親水公園,307:政府庁舎,308:梁居寺,309:北倉竹'},
  {id:'S4',name:'地下鉄 臨港線',co:'川島地下鉄',mk:'④',color:'#3a6db8',st:'401:鳶島新都心,402:夢みなと,403:水郷山,404:川島港旅客ターミナル,405:川島ふ頭,406:中上川水再生センター,407:中上浜,408:芝浦町,410:東奥重,411:北倉竹'},
  {id:'S5',name:'地下鉄 城北線',co:'川島地下鉄',mk:'⑤',color:'#e4467a',st:'501:鳶島,502:北鳶島,503:辻部,504:尊寺文化公園,505:川島望通,506:城北,507:川島中央,508:華咲町,509:川大前,510:江東町,511:浅賀台'}
+,
+ {id:'Y',name:'海竜線',co:'KR京日本',mk:'Y',color:'#e0606f',st:'Y01:海王,Y02:平山,Y03:北海王,Y04:文禅寺,Y05:白雲南,Y06:菊能台,Y07:羽竜'},
+ {id:'SR',name:'城川本線',co:'城川電鉄',mk:'SR',color:'#2e7d4f',st:'SR01:城川芝浦,SR02:城川倉竹,SR03:安見,SR04:葛海中央,SR05:城川遠石,SR06:利賀浦海浜公園,SR07:島見が丘,SR08:糸里,SR09:金城,SR11:鴨野華瀬'},
+ {id:'YG',name:'夕霧本線',co:'夕霧鉄道',mk:'夕',color:'#d9921f',st:':清水夕霧,:屋敷原,:仁山,:南夕霧,:今城学園前'},
+ {id:'AH',name:'東島線',co:'有田電鉄',mk:'AH',color:'#3cc4b8',st:'AH01:高見浜,AH02:東桜地,AH03:桜地,AH04:本広岡,AH05:芝向,AH06:東島栄町,AH07:東島'},
+ {id:'KT',name:'辰巳線',co:'京北鉄道',mk:'辰',color:'#3a8296',st:':光陽街,:南小坂,:篝火島,:新篝火島,:穂方,:三佐,:鍬が浜,:美波辰巳温泉,:美波辰巳,:竜蔵寺,:三倉,:広江,:金城'},
+ {id:'KK',name:'高速線',co:'京北鉄道',mk:'高',color:'#25667f',st:':金城,:北海王,:松森川,:新須賀浦'},
+ {id:'KO',name:'海王線',co:'京北鉄道',mk:'海',color:'#4b9fb2',st:':金城,:つわの大崎,:城戸三が谷町,:平山新町,:海王新地,:海王'},
+ {id:'LR',name:'倉竹LRT 倉竹線',co:'倉竹LRT',mk:'A',color:'#ea5068',st:':堺雁山,:東倉竹四丁目,:倉竹北,:倉竹,:南倉竹,:浮端町,:芝浦町,A1:南奥重,A2:川島医大分院前,:中上浜港,:中上浜'}
+,
+ {id:'OK',name:'沖津線',co:'沖津宮浜臨海鉄道',mk:'沖',color:'#2f6e57',st:':佐奈海岸,:新佐奈,:弥芝勝川,:梓栗町,:茅波,:淡島,:豊浜,:鹿加部,:浅海酒川,:酒川町,:大戸坂水,:栖垣,:浜平,:西宮酒,:宮酒本町'},
+ {id:'MH',name:'宮浜港線',co:'沖津宮浜臨海鉄道',mk:'宮',color:'#4f9c80',st:':宮浜港,:宮酒本町,:上ヶ丘(沖),:神楽橋,:北宮野'},
+ {id:'U',name:'有東線',co:'KR京日本',mk:'U',color:'#2b6fd8',st:'S01:須賀浦,:KR想掛,:美山,:南桜地,:桜地温泉,:新野'}
 ];
+const SEQ_NUM = {OK:'OK',MH:'MH',KT:'KT',KK:'KK',KO:'KO',LR:'A'};
 const LINES = {}; const LINE_ORDER = [];
 const STATION_LINES = {}; // 駅名 -> [lineId]
 for (const L of LINES_SRC){
   L.stations = L.st.split(',').map(s=>{const i=s.indexOf(':');return {code:s.slice(0,i),name:s.slice(i+1)}});
+  if(SEQ_NUM[L.id]) L.stations.forEach((s,i)=>{ s.code=SEQ_NUM[L.id]+String(i+1).padStart(2,'0'); }); // 順番に1から番号を振る
   L.stations.forEach((s,i)=>{ if(!s.code) s.code=L.id+(i%2?'7':'0'); }); // ナンバリングのない駅は0/7
   LINES[L.id]=L; LINE_ORDER.push(L.id);
   for (const s of L.stations){ (STATION_LINES[s.name] ||= []); if(!STATION_LINES[s.name].includes(L.id)) STATION_LINES[s.name].push(L.id); }
 }
-const DEPOTS = {TK:['腰が原','腰が原車両基地'],B:['原石町','千波車両基地'],SS:['佐雅野','佐雅野車庫'],ST:['金が山','金が山車両基地'],MK:['能見市','能見車両基地'],MI:['糸里港','糸里港車庫'],SK:['井川','井川検車区'],SM:['今城','今城車庫'],AR:['有田','有田車両基地'],KH:['茶屋桜町','茶屋桜町車庫'],KN:['北大神本町','北波検車区'],A:['唐林','唐林車両基地'],HH:['星影','星影工場'],S1:['雪峰湖','雪峰湖車両基地'],S2:['川島空港第1ターミナル','空港線車両基地'],S3:['梁居寺','梁居寺検車区'],S4:['鳶島新都心','鳶島車両基地'],S5:['江東町','江東車両基地']};
+const DEPOTS = {TK:['腰が原','腰が原車両基地'],B:['原石町','千波車両基地'],SS:['佐雅野','佐雅野車庫'],ST:['金が山','金が山車両基地'],MK:['能見市','能見車両基地'],MI:['糸里港','糸里港車庫'],SK:['井川','井川検車区'],SM:['今城','今城車庫'],AR:['有田','有田車両基地'],KH:['茶屋桜町','茶屋桜町車庫'],KN:['北大神本町','北波検車区'],A:['唐林','唐林車両基地'],HH:['星影','星影工場'],S1:['雪峰湖','雪峰湖車両基地'],S2:['川島空港第1ターミナル','空港線車両基地'],S3:['梁居寺','梁居寺検車区'],S4:['鳶島新都心','鳶島車両基地'],S5:['江東町','江東車両基地'],Y:['羽竜','羽竜車両センター'],SR:['金城','城川車庫'],YG:['南夕霧','夕霧車庫'],AH:['高見浜','高見浜車庫'],KT:['竜蔵寺','辰巳検車区'],KK:['松森川','松森川車庫'],KO:['海王新地','海王新地車庫'],LR:['浮端町','倉竹LRT車庫'],OK:['弥芝勝川','沖津車両区'],MH:['宮浜港','宮浜港車庫'],U:['新野','新野車両センター']};
 const numDigit = code => { if(!code) return null; const m=String(code).match(/(\d)(?:-\d)?$/); return m?m[1]:null; };
 const linesOf = st => STATION_LINES[st] || [];
 const PRESETS = [
   {id:'center',name:'川島中心エリア（おすすめ）',lines:['TK','B','SS','ST','S1','S2']},
   {id:'east',name:'東部・下港エリア',lines:['TK','MK','SK','KH','HH','A']},
   {id:'north',name:'北部・大神湖エリア',lines:['SM','SK','ST','B','KN','A','HH']},
-  {id:'south',name:'南部・海王エリア',lines:['TK','AR','MK','MI','B','S4']},
+  {id:'south',name:'南部・海王エリア',lines:['TK','AR','MK','MI','Y','KO','KK']},
+  {id:'kura',name:'倉竹・城川エリア',lines:['TK','B','SR','KT','LR','S4','MI']},
+  {id:'kyohoku',name:'京北鉄道・海王エリア',lines:['KT','KK','KO','SR','Y','TK']},
+  {id:'rinkai',name:'北東・臨海エリア',lines:['OK','MH','A','HH','KH','TK']},
+  {id:'aruda',name:'有田・桜地エリア',lines:['AR','U','AH','MK','TK','KO']},
   {id:'subway',name:'地下鉄＋島浜線',lines:['TK','S1','S2','S3','S4','S5']},
-  {id:'all',name:'全路線（上級・長期戦）',lines:LINE_ORDER.slice()},
+  {id:'all',name:'全路線（上級・無限モード推奨）',lines:LINE_ORDER.slice()},
 ];
 
 /* =========================================================
@@ -482,7 +506,12 @@ class Engine{
   lineAvail(){ const o={}; for(const l of this.active) o[l]=this.lineCount(l); return o; }
   ticketOk(l){ const av=this.lineAvail(); if(!(l in av)) return false; return av[l]>3 || !Object.values(av).some(n=>n>3); }
   refill(){
-    if(!this.deck.length && this.discard.length>1){
+    if(this.deck.length || this.winner!=null) return;
+    if(!this.rules.infinite){
+      this.winner=-1; this.drawn=null; this.pending=0;
+      this.addLog('🚧 山札がなくなりました。引き分けです'); this.event({type:'drawgame'}); return;
+    }
+    if(this.discard.length>1){
       const top=this.discard.pop(); this.deck=shuffle(this.discard); this.discard=[top];
       this.addLog('🔄 山札が切れたので、場のカードを切り直して山札にしました'); this.event({type:'refill'});
     }
@@ -515,7 +544,7 @@ class Engine{
   }
   // ---- アクション ----
   _act(pi,a){
-    if(this.winner!=null) return 'ゲームは終了しています';
+    if(this.winner!=null && a.type!=='emote') return 'ゲームは終了しています';
     const p=this.players[pi];
     if(a.type==='catch'){
       if(this.vuln==null || this.vuln===pi) return '指摘できません';
@@ -528,6 +557,10 @@ class Engine{
       if(!this.canDeclare(pi)) return 'ANO!は残り1枚になるときだけ宣言できます';
       p.declared=true; if(this.vuln===pi) this.vuln=null;
       this.addLog(`📣 ${p.name}「ANO!」`); this.event({type:'kw',who:p.name}); return null;
+    }
+    if(a.type==='emote'){
+      const now=Date.now(); if(now-(p.lastEmote||0)<250) return null; p.lastEmote=now;
+      this.event({type:'emote',who:pi}); return null;
     }
     if(a.type==='jump'){
       const card=p.hand.find(c=>c.id===a.id);
@@ -793,7 +826,7 @@ function joinRoom(){
     const to=setTimeout(()=>{ if(!conn.open) $('titleErr').textContent='部屋が見つかりません'; },8000);
     conn.on('open',()=>{ clearTimeout(to); $('titleErr').textContent=''; conn.send({t:'join',name:S.myName,icon:S.icon}); });
     conn.on('data',d=>{
-      if(d.t==='view'){ if(d.v.phase==='lobby'){ S.lobbyView=d.v; show('lobby'); renderLobby(); } else { show('game'); render(d.v); } }
+      if(d.t==='view'){ if(d.v.phase==='lobby'){ S.lobbyView=d.v; if(S.view){ S.view=null; closeModal(); } show('lobby'); renderLobby(); } else { show('game'); render(d.v); } }
       else if(d.t==='kicked'){ S.kicked=true; alert('ホストによって退出させられました'); location.href=location.pathname; }
       else if(d.t==='err'){ toastErr(d.m); if(!S.view) $('titleErr').textContent=d.m; }
     });
@@ -842,6 +875,7 @@ function settingsHTML(st,editable){
    <div class="lchk">${LINE_ORDER.map(id=>`<label><input type="checkbox" data-line="${id}" ${st.lines.includes(id)?'checked':''} ${dis}>${lineChip(id)}</label>`).join('')}</div>
    <label><input type="checkbox" data-r="digit" ${st.rules.digit?'checked':''} ${dis}>駅ナンバーの末尾の数字が同じなら出せる（UNOの数字ルール）</label><br>
    <label><input type="checkbox" data-r="company" ${st.rules.company?'checked':''} ${dis}>同じ鉄道会社の路線どうしも出せる</label><br>
+   <label><input type="checkbox" data-r="infinite" ${st.rules.infinite?'checked':''} ${dis}>♾ 無限モード（山札が切れたら場のカードを切り直して補充。OFFなら山札切れで引き分け）</label><br>
    <label><input type="checkbox" data-r="swap" ${st.rules.swap?'checked':''} ${dis}>駅ナンバー末尾0：全員が時計回りに手札交換／末尾7：指名した人と手札交換</label>
    <div class="muted">路線数が多いほど出せるカードが減り長期戦になります。4〜6路線がおすすめ。</div></div>`;
 }
@@ -850,7 +884,7 @@ function renderSettings(){
   for(const [cid,editable,st] of [['settingsTitle',true,S.settings],['settingsLobby',S.role==='host',S.role==='guest'?(S.lobbyView?.settings||S.settings):S.settings]]){
     const el=$(cid); el.innerHTML=settingsHTML(st,editable);
     if(!editable) continue;
-    el.querySelector('[data-s=preset]').onchange=e=>{const p=PRESETS.find(x=>x.id===e.target.value); S.settings.preset=e.target.value; if(p) S.settings.lines=p.lines.slice(); if(e.target.value==='all') S.settings.rules.company=true; onSettings();};
+    el.querySelector('[data-s=preset]').onchange=e=>{const p=PRESETS.find(x=>x.id===e.target.value); S.settings.preset=e.target.value; if(p) S.settings.lines=p.lines.slice(); if(e.target.value==='all'){ S.settings.rules.company=true; S.settings.rules.infinite=true; } onSettings();};
     el.querySelectorAll('[data-line]').forEach(c=>c.onchange=()=>{const id=c.dataset.line; S.settings.lines=c.checked?LINE_ORDER.filter(l=>l===id||S.settings.lines.includes(l)):S.settings.lines.filter(l=>l!==id); if(S.settings.lines.length<2){S.settings.lines.push(id);} S.settings.preset='custom'; onSettings();});
     el.querySelectorAll('[data-r]').forEach(c=>c.onchange=()=>{S.settings.rules[c.dataset.r]=c.checked; onSettings();});
   }
@@ -898,6 +932,8 @@ function renderSeats(v){
         + `<div class="fan" id="fan${i}" style="left:${fx}px;top:${fy}px;transform:rotate(${rot}deg)">${fan}</div>`;
   });
   $('seats').innerHTML=html;
+  { const myAv=document.querySelector(`#seat${v.me} .av`); if(myAv){ const can=v.turn!==v.me || v.winner!=null; myAv.classList.toggle('emo',can); myAv.title=can?'クリックでパーティクル！':'';
+    myAv.onclick=()=>{ const vv=S.view; if(!vv) return; if(vv.turn===vv.me && vv.winner==null) return; const t=Date.now(); if(t-(S.lastEmo||0)<250) return; S.lastEmo=t; send({type:'emote'}); }; } }
   $('seats').querySelectorAll('[data-kick]').forEach(b=>b.onclick=()=>hostKick(+b.dataset.kick));
   // fanをseat内参照できるように
   v.players.forEach((p,i)=>{ const f=$('fan'+i), st=$('seat'+i); if(f&&st){ st.appendChild(f.cloneNode(true)); f.remove(); const nf=st.querySelector('.fan'); const l=parseFloat(nf.style.left)-parseFloat(st.style.left), t=parseFloat(nf.style.top)-parseFloat(st.style.top); nf.style.left=(l+st.offsetWidth/2)+'px'; nf.style.top=(t+st.offsetHeight/2)+'px'; } });
@@ -938,7 +974,8 @@ function render(v){
   $('log').innerHTML=v.log.slice().reverse().map(s=>`<div>${esc(s)}</div>`).join('');
   // ステータス
   let st='';
-  if(v.winner!=null) st = v.winner===v.me ? '🏆 あなたの勝ち！終点到着！' : `🏁 ${v.players[v.winner].name} さんの勝ち`;
+  if(v.winner===-1) st='🚧 山札切れで引き分け（ここを押すと結果）';
+  else if(v.winner!=null) st = v.winner===v.me ? '🏆 あなたの勝ち！終点到着！' : `🏁 ${v.players[v.winner].name} さんの勝ち`;
   else if(myTurn && v.pending>0) st = v.playable.length ? `🏭 +${v.pending}！ 車両基地を重ねるか、山札から${v.pending}枚引く` : `🏭 +${v.pending}！ 山札をクリックして${v.pending}枚引いてください`;
   else if((v.jumpable||[]).length) st = `⚡ ${v.top.station}駅の改札でジャンプインできます！`;
   else if(myTurn) st = v.drawn ? '引いたカードを出すか、パスしてください' : (v.playable.length?'あなたの番です。カードを選んでください':'出せるカードがありません。山札から引いてください');
@@ -963,7 +1000,7 @@ function render(v){
   // イベント
   playEvents(v,evs,handRects);
   // 勝利
-  if(v.winner!=null) showResult(v);
+  if(v.winner!=null && S.resultGid!==v.gid){ S.resultGid=v.gid; setTimeout(()=>{ if(S.view&&S.view.gid===v.gid&&S.view.winner!=null) showResult(S.view); },900); }
 }
 function playEvents(v,evs,handRects){
   const plays=evs.filter(e=>e.type==='play');
@@ -977,6 +1014,8 @@ function playEvents(v,evs,handRects){
       delay+=350+e.cards.length*260;
     } else if(e.type==='draw'){ setTimeout(()=>flyDraw(v,e),delay); delay+=200; }
     else if(e.type==='kw'){ const wi=v.players.findIndex(p=>p.name===e.who); setTimeout(()=>splash('ANO!',e.who,wi>=0?pcol(wi):null),delay); }
+    else if(e.type==='drawgame') setTimeout(()=>splash('引き分け','山札がなくなりました','#555',true),delay);
+    else if(e.type==='emote') particles(v,e.who);
     else if(e.type==='refill') setTimeout(()=>splash('山札補充','場のカードを切り直しました','#1f4f8f'),delay);
     else if(e.type==='swap'){ setTimeout(()=>swapAnim(v,e),delay); delay+=400; }
     else if(e.type==='catch') setTimeout(()=>splash('指摘！',`${e.who} +2枚`,'#c4122f',true),delay);
@@ -998,6 +1037,24 @@ function flyCard(v,e,c,fromRect,isLast){
   requestAnimationFrame(()=>requestAnimationFrame(()=>{ w.style.transform='none'; w.style.opacity='1'; }));
   setTimeout(()=>{ if(isLast){ $('topCard').style.visibility=''; clearTimeout(S.revealT);} w.classList.add('land'); },650);
   setTimeout(()=>w.remove(),1600);
+}
+const PT_SYM=['★','✦','●','◆','♪','✨','🚃','🎫'];
+function particles(v,i){
+  const el=document.querySelector(`#seat${i} .av`); if(!el) return; const r=el.getBoundingClientRect();
+  const cx=r.left+r.width/2, cy=r.top+r.height/2, col=pcol(i);
+  for(let k=0;k<22;k++){
+    const d=document.createElement('div'); d.className='pt';
+    const a=Math.random()*Math.PI*2, sp=60+Math.random()*110;
+    d.textContent=PT_SYM[Math.floor(Math.random()*PT_SYM.length)];
+    d.style.left=cx+'px'; d.style.top=cy+'px';
+    d.style.color=Math.random()<.6?col:['#fff','#ffd34d','#ff6b8a','#4fb3ff'][k%4];
+    d.style.fontSize=(12+Math.random()*16)+'px';
+    d.style.setProperty('--dx',Math.cos(a)*sp+'px'); d.style.setProperty('--dy',(Math.sin(a)*sp-40)+'px');
+    d.style.setProperty('--rot',(Math.random()*720-360)+'deg');
+    d.style.animationDuration=(0.8+Math.random()*0.6)+'s';
+    document.body.appendChild(d); setTimeout(()=>d.remove(),1500);
+  }
+  const pl=plateEl(i); if(pl){ pl.classList.remove('flash'); void pl.offsetWidth; pl.classList.add('flash'); }
 }
 function seatPoint(v,i){ const el=i===v.me?$('hand'):(chipEl(i)||plateEl(i)); if(!el) return null; const r=el.getBoundingClientRect(); return {x:r.left+r.width/2,y:i===v.me?r.top+60:r.top+r.height/2}; }
 function flyBack(a,b,delay){ if(!a||!b) return; setTimeout(()=>{ const d=document.createElement('div'); d.className='flyback'; d.style.left=a.x+'px'; d.style.top=a.y+'px'; document.body.appendChild(d);
@@ -1059,8 +1116,19 @@ function pickLine(id){
 function showResult(v){
   const ranking=v.players.map((p,i)=>({...p,i})).sort((a,b)=>a.count-b.count);
   const isHostLike=S.role!=='guest';
-  openModal(`<h2>🏁 終点です</h2><p style="font-size:20px;font-weight:900">${esc(v.players[v.winner].name)} さんの勝利！</p><ol>${ranking.map(p=>`<li>${esc(p.name)}：残り${p.count}枚</li>`).join('')}</ol><div class="row">${isHostLike?'<button class="btn primary" id="btnAgain">もう一度遊ぶ</button>':'<span class="muted">ホストが次のゲームを開始できます</span>'}<button class="btn ghost" onclick="closeModal()">盤面を見る</button><button class="btn ghost" onclick="location.href=location.pathname">タイトルへ</button></div>`);
+  const head = v.winner===-1 ? `<h2>🚧 山札切れ</h2><p style="font-size:20px;font-weight:900">引き分け！</p>` : `<h2>🏁 終点です</h2><p style="font-size:20px;font-weight:900">${esc(v.players[v.winner].name)} さんの勝利！</p>`;
+  const btns = S.role==='host' ? '<button class="btn primary" id="btnRoom">🏠 部屋に戻る</button><button class="btn" id="btnAgain">すぐもう一度</button>'
+             : S.role==='solo' ? '<button class="btn primary" id="btnAgain">もう一度遊ぶ</button>'
+             : '<span class="muted">ホストが部屋に戻ると待合室へ移動します</span>';
+  openModal(`${head}<ol>${ranking.map(p=>`<li>${esc(p.name)}：残り${p.count}枚</li>`).join('')}</ol><div class="row">${btns}<button class="btn ghost" onclick="closeModal()">盤面を見る</button><button class="btn ghost" onclick="location.href=location.pathname">タイトルへ</button></div>`);
+  const r=$('btnRoom'); if(r) r.onclick=()=>{ closeModal(); backToRoom(); };
   const b=$('btnAgain'); if(b) b.onclick=()=>{closeModal(); if(S.engine){ S.roster=S.engine.players.map(p=>({name:p.name.replace(/\(CPU\)$/,''),cpu:p.cpu,peer:p.peer,icon:p.icon})); } startGame(); };
+}
+function backToRoom(){
+  const E=S.engine; if(!E) return;
+  clearTimeout(S.cpuTimer); clearTimeout(S.catchTimer); clearTimeout(S.jumpTimer); S.cpuTimer=S.catchTimer=S.jumpTimer=null;
+  S.roster=E.players.filter(p=>p.cpu || p.peer==='host' || S.conns[p.peer]).map(p=>({name:p.name.replace(/\(CPU\)$/,''),cpu:p.cpu,peer:p.peer,icon:p.icon}));
+  S.engine=null; S.view=null; show('lobby'); broadcastLobby();
 }
 function openModal(h){$('modalInner').innerHTML=h;$('modal').classList.remove('hidden')}
 function closeModal(){$('modal').classList.add('hidden')}
@@ -1078,7 +1146,8 @@ function showRules(){
   <h3>🟧 改札（オレンジ）</h3><p><b>⚡ジャンプイン：</b>場に改札と同じ駅が出たら、自分の番でなくても改札カード1枚をすぐ出せます。出した人の次の人から順番が続きます（車両基地の+が溜まっている間は不可）。自分の番なら、場と同じ駅の改札は1枚だけでも出せます。<br>改札と同じ駅名のカードを持っているとき、その2枚をまとめて出せます。場の駅とその改札の駅が同じ路線でつながっていれば出せ、一緒に出した駅カードが新しい場札になります。</p>
   <h3>🏭 車両基地（+2）</h3><p>次の人は山札から2枚引き、その番は休みです。ただし車両基地（路線は問わない）を持っていれば重ねて出せ、+2ずつ溜まって次の人へ回ります。</p>
   <h3>🎫 乗車券</h3><p>路線に関係なくいつでも出せます。出した人は路線を1つ選び、次の人はその路線のカードを出します。<b>ANO!宣言後（最後の1枚）には出せません。</b>手札と山札に残っているカードが3枚以下の路線は指定できません。</p>
-  <h3>🔄 山札切れ</h3><p>山札がなくなったら、いちばん上以外の場のカードを切り直して山札にします。</p>
+  <h3>🚧 山札切れ</h3><p>山札がなくなった時点で<b>引き分け</b>です。設定で<b>♾ 無限モード</b>をONにすると、いちばん上以外の場のカードを切り直して山札を補充し、決着がつくまで続きます。</p>
+  <h3>✨ パーティクル</h3><p>自分の番ではないとき、左下の自分のアイコンをクリックするとパーティクルが出ます（ほかのプレイヤーにも見えます）。</p>
   <h3>📣 ANO!</h3><p>カードを出すと残り1枚になるときだけ、自分の番に「ANO!」ボタンを押せます（押してからカードを出す）。宣言せずに残り1枚になると、他のプレイヤーの画面に「ANO!言ってない！」ボタンが出て、押されると2枚追加。指摘される前なら、残り1枚の状態でANO!を押せばセーフです。</p>
   <h3>🔄 手札交換（設定でON/OFF）</h3><p><b>駅ナンバーの末尾が0</b>のカードを出すと、全員が手札を時計回りに隣の人へ渡します。<b>末尾が7</b>なら、出した人が相手を1人選んで手札をまるごと交換します。最後の1枚で出した場合はそのまま上がりです。</p>
   <h3>🗺 収録路線（太字は乗換駅）</h3>${lines}
@@ -1090,6 +1159,7 @@ $('btnHost').onclick=hostRoom;
 $('btnJoin').onclick=joinRoom;
 $('btnSolo').onclick=soloGame;
 $('btnRules').onclick=showRules; $('btnRules2').onclick=showRules;
+$('status').onclick=()=>{ const v=S.view; if(v&&v.winner!=null) showResult(v); };
 $('btnLog').onclick=()=>$('infoPanel').classList.toggle('closed');
 $('infoPanel').classList.add('closed');
 $('btnAddCpu').onclick=()=>{ if(S.roster.length>=6) return; const names=['しまはま','さがわ','みかわ','ほしかげ','ありた','きょうほく']; const used=S.roster.map(r=>r.name); const nm='CPU '+(names.find(n=>!used.includes('CPU '+n))||'?'); S.roster.push({name:nm,cpu:true}); broadcastLobby(); };
