@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ANO KAWASHIMA 川島県鉄道UNO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root{
+  --bg:#0f1b2d;--bg2:#16263d;--panel:#1d3150;--line:#2c4468;--text:#eef3fa;--sub:#9fb2cc;
+  --accent:#ffb020;--gate:#ff8a1f;--ok:#3ccf7a;--ng:#ff5a6a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:radial-gradient(ellipse at top,#1b3152,var(--bg) 70%);color:var(--text);
+  font-family:"Noto Sans JP",system-ui,sans-serif;overflow-x:hidden}
+button{font-family:inherit;cursor:pointer}
+.hidden{display:none!important}
+
+/* ===== Title / Lobby ===== */
+.screen{max-width:960px;margin:0 auto;padding:16px}
+.logo{text-align:center;margin:28px 0 8px}
+.logo h1{margin:0;font-size:clamp(38px,9vw,72px);font-weight:900;letter-spacing:.04em;
+  background:linear-gradient(90deg,#4fb3ff,#ffd34d,#ff7a59);-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo p{margin:4px 0 0;color:var(--sub)}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin:14px 0}
+.box h2{margin:0 0 10px;font-size:18px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input[type=text]{background:#0d1828;border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:10px;font-size:16px;font-family:inherit;min-width:0}
+.btn{background:#2a4a78;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:15px;font-weight:700}
+.btn:hover{filter:brightness(1.15)}
+.btn:disabled{opacity:.4;cursor:not-allowed;filter:none}
+.btn.primary{background:linear-gradient(180deg,#2f8cff,#1a64d1)}
+.btn.warn{background:linear-gradient(180deg,#ffb63b,#e88700);color:#2a1700}
+.btn.danger{background:#b8344a}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.code{font-size:34px;font-weight:900;letter-spacing:.2em;color:var(--accent)}
+.plist{list-style:none;padding:0;margin:8px 0}
+.plist li{padding:8px 10px;background:#152640;border-radius:8px;margin:4px 0;display:flex;justify-content:space-between;align-items:center}
+.muted{color:var(--sub);font-size:13px}
+.err{color:var(--ng);font-size:14px;min-height:1em}
+
+/* ===== Game ===== */
+#game{display:flex;flex-direction:column;height:100vh;height:100dvh}
+.topbar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(0,0,0,.25);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.topbar .title{font-weight:900;color:var(--accent)}
+.players{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.pchip{background:#152640;border:2px solid transparent;border-radius:10px;padding:4px 10px;font-size:13px;display:flex;gap:6px;align-items:center}
+.pchip.turn{border-color:var(--accent);box-shadow:0 0 12px rgba(255,176,32,.5)}
+.pchip .n{font-weight:900;font-size:15px}
+.pchip .kw{background:var(--ng);color:#fff;border-radius:6px;padding:0 5px;font-size:11px;font-weight:900}
+.pchip.me{background:#203b63}
+.dir{font-size:20px;color:var(--accent)}
+.table{flex:1;display:flex;gap:16px;padding:12px;align-items:center;justify-content:center;flex-wrap:wrap;overflow:auto;min-height:0}
+.pile{display:flex;gap:16px;align-items:center}
+.deck{width:110px;height:160px;border-radius:12px;background:repeating-linear-gradient(45deg,#1f4f8f 0 10px,#1a4176 10px 20px);border:3px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;color:#fff;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.4)}
+.deck small{font-weight:400;font-size:12px;opacity:.85}
+.deck.can{animation:pulse 1.2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(255,176,32,.45)}}
+.info{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;width:min(340px,100%)}
+.info h3{margin:0 0 6px;font-size:14px;color:var(--sub);font-weight:400}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.lchip{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;color:#fff;background:var(--c);text-shadow:0 1px 1px rgba(0,0,0,.35)}
+.req{margin-top:8px;padding:6px 8px;border-radius:8px;background:#3a2a0c;color:#ffd27a;font-size:13px}
+.log{margin-top:10px;max-height:120px;overflow:auto;font-size:12px;color:var(--sub);border-top:1px solid var(--line);padding-top:6px}
+.log div{padding:1px 0}
+.status{text-align:center;font-weight:700;padding:6px;min-height:32px}
+.status.myturn{color:var(--accent)}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:4px 8px}
+.kwbtn{background:linear-gradient(180deg,#ff5a6a,#d22a45);color:#fff;font-weight:900;font-size:17px;letter-spacing:.05em}
+.kwbtn.on{background:#555}
+.hand{display:flex;gap:6px;overflow-x:auto;padding:10px 12px 16px;background:rgba(0,0,0,.25);border-top:1px solid var(--line);min-height:186px;align-items:flex-end}
+.hand .card{flex:0 0 auto;transition:transform .12s}
+.hand .card.playable{cursor:pointer}
+.hand .card.playable:hover{transform:translateY(-10px)}
+.hand .card.dim{filter:brightness(.55) saturate(.6)}
+.hand .card.drawn{outline:3px dashed var(--accent);outline-offset:2px}
+
+/* ===== Card ===== */
+.card{width:110px;height:160px;border-radius:12px;background:#fff;color:#1a1a1a;position:relative;overflow:hidden;
+  box-shadow:0 6px 14px rgba(0,0,0,.4);display:flex;flex-direction:column;border:3px solid #fff;user-select:none}
+.card .band{background:var(--c);color:#fff;padding:4px 6px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:4px;min-height:26px;text-shadow:0 1px 1px rgba(0,0,0,.3)}
+.card .mk{background:#fff;color:var(--c);border-radius:4px;padding:0 3px;font-weight:900;font-size:11px;text-shadow:none}
+.card .body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;text-align:center}
+.card .num{border:2px solid var(--c);color:var(--c);border-radius:5px;font-weight:900;font-size:12px;padding:0 4px;margin-bottom:4px}
+.card .st{font-weight:900;font-size:20px;line-height:1.15;word-break:break-all}
+.card .st.s{font-size:16px}.card .st.xs{font-size:13px}
+.card .foot{background:var(--c);height:8px}
+.card .tag{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-weight:900;font-size:12px;padding:3px 0;color:#fff;background:#222}
+.card.skip .tag{background:#2d2d2d}
+.card.rev .tag{background:#6a2bd1}
+.card.depot{background:#2c2c2c;color:#fff}
+.card.depot .body .big{font-size:36px;font-weight:900;color:#ffd34d}
+.card.depot .body .lbl{font-weight:900;font-size:15px}
+.card.depot .body .near{font-size:11px;opacity:.8}
+.card.gate{background:linear-gradient(160deg,#ffb04a,#ff7a12);color:#3a1a00;border-color:#ffe0b8}
+.card.gate .band{background:#c75500}
+.card.gate .gi{font-size:13px;font-weight:900;border:2px solid #3a1a00;border-radius:6px;padding:0 6px;margin-bottom:6px}
+.card.ticket{background:repeating-linear-gradient(0deg,#d8f0dc 0 3px,#c6e8cc 3px 6px);color:#163b20;border-color:#e8fff0}
+.card.ticket .band{background:#1f7a3c}
+.card.ticket .tk{font-size:22px;font-weight:900;letter-spacing:.1em}
+.card.ticket .tks{font-size:11px}
+.card.big{width:150px;height:218px}
+.card.big .st{font-size:28px}.card.big .st.s{font-size:22px}.card.big .st.xs{font-size:18px}
+.card.big .band{font-size:13px}
+.card.big .num{font-size:15px}
+
+/* ===== Modal ===== */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal .inner{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:640px;width:100%;max-height:85vh;overflow:auto}
+.linegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:10px 0}
+.linegrid button{background:var(--c);color:#fff;border:none;border-radius:10px;padding:10px;font-weight:700;text-align:left;text-shadow:0 1px 1px rgba(0,0,0,.35);font-size:14px}
+.linegrid button small{display:block;font-weight:400;font-size:11px;opacity:.9}
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#ff3b55;color:#fff;font-weight:900;font-size:clamp(24px,6vw,44px);padding:10px 28px;border-radius:14px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:pop 1.6s forwards;pointer-events:none}
+@keyframes pop{0%{transform:translateX(-50%) scale(.5);opacity:0}15%{transform:translateX(-50%) scale(1.1);opacity:1}25%{transform:translateX(-50%) scale(1)}80%{opacity:1}100%{opacity:0}}
+.rules h3{margin:14px 0 4px;color:var(--accent);font-size:15px}
+.rules p,.rules li{font-size:14px;line-height:1.7}
+.set label{display:inline-flex;align-items:center;gap:4px;margin:3px 8px 3px 0;font-size:14px}
+.set .lchk{display:flex;flex-wrap:wrap;gap:2px 0;margin:8px 0}
+.set select{padding:8px;border-radius:8px;background:#0d1828;color:#fff;border:1px solid var(--line);font-family:inherit;font-size:14px;max-width:100%}
+.stlist{font-size:12px;color:var(--sub);line-height:1.6;margin:2px 0 8px}
+@media (max-width:600px){
+  .card{width:84px;height:124px}.card .st{font-size:16px}.card .st.s{font-size:13px}.card .st.xs{font-size:11px}
+  .card .band{font-size:9px;min-height:22px}
+  .deck{width:84px;height:124px}
+  .card.big{width:120px;height:176px}.card.big .st{font-size:22px}
+  .hand{min-height:150px}
+  .topbar .title{display:none}
+  .players{flex-wrap:nowrap;overflow-x:auto}
+  .pchip{font-size:11px;padding:3px 7px;white-space:nowrap}
+  .table{gap:10px;padding:8px}
+  .log{max-height:70px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== タイトル ===== -->
+<div id="title" class="screen">
+  <div class="logo"><h1>ANO KAWASHIMA</h1><p>川島県 鉄道UNO ― 川島都市圏路線カードゲーム</p></div>
+  <div class="box">
+    <h2>プレイヤー名</h2>
+    <input type="text" id="nameInput" maxlength="10" placeholder="なまえ" style="width:220px">
+  </div>
+  <div class="box">
+    <h2>ゲーム設定</h2>
+    <div id="settingsTitle"></div>
+  </div>
+  <div class="box">
+    <h2>オンライン対戦</h2>
+    <div class="row">
+      <button class="btn primary" id="btnHost">部屋を作る</button>
+      <span class="muted">または</span>
+      <input type="text" id="codeInput" maxlength="5" placeholder="部屋コード" style="width:140px;text-transform:uppercase">
+      <button class="btn" id="btnJoin">参加する</button>
+    </div>
+    <div class="err" id="titleErr"></div>
+  </div>
+  <div class="box">
+    <h2>ひとりで遊ぶ</h2>
+    <div class="row">
+      <span>CPUの人数</span>
+      <select id="cpuNum" style="padding:8px;border-radius:8px;background:#0d1828;color:#fff;border:1px solid var(--line)">
+        <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
+      </select>
+      <button class="btn warn" id="btnSolo">CPU対戦スタート</button>
+    </div>
+  </div>
+  <div class="row" style="justify-content:center"><button class="btn ghost" id="btnRules">ルール・路線一覧</button></div>
+</div>
+
+<!-- ===== ロビー ===== -->
+<div id="lobby" class="screen hidden">
+  <div class="logo"><h1 style="font-size:40px">待合室</h1></div>
+  <div class="box" style="text-align:center">
+    <div class="muted">部屋コード</div>
+    <div class="code" id="lobbyCode">-----</div>
+    <div class="row" style="justify-content:center;margin-top:8px">
+      <button class="btn ghost" id="btnCopy">招待リンクをコピー</button>
+    </div>
+  </div>
+  <div class="box">
+    <h2>乗客 (<span id="lobbyCount">0</span>/6)</h2>
+    <ul class="plist" id="lobbyList"></ul>
+    <div class="row" id="hostCtl">
+      <button class="btn" id="btnAddCpu">CPUを追加</button>
+      <button class="btn primary" id="btnStart">出発進行！</button>
+    </div>
+    <div class="muted" id="guestWait">ホストが開始するまでお待ちください…</div>
+  </div>
+  <div class="box"><h2>ゲーム設定</h2><div id="settingsLobby"></div></div>
+  <div class="row" style="justify-content:center"><button class="btn ghost" id="btnLeave">退出</button></div>
+</div>
+
+<!-- ===== ゲーム ===== -->
+<div id="game" class="hidden">
+  <div class="topbar">
+    <span class="title">ANO KAWASHIMA</span>
+    <span class="dir" id="dirIcon">⟳</span>
+    <div class="players" id="players"></div>
+    <button class="btn ghost" id="btnRules2" style="padding:6px 10px">ルール</button>
+  </div>
+  <div class="table">
+    <div class="pile">
+      <div class="deck" id="deck">山札<small id="deckCount"></small></div>
+      <div id="topCard"></div>
+    </div>
+    <div class="info">
+      <h3>現在の駅に乗り入れている路線</h3>
+      <div class="chips" id="topLines"></div>
+      <div class="req hidden" id="reqLine"></div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="actions">
+    <button class="btn kwbtn" id="btnKw">ANO!</button>
+    <button class="btn" id="btnPass">パス</button>
+    <button class="btn danger" id="btnCatch">ANO!言ってない！</button>
+  </div>
+  <div class="hand" id="hand"></div>
+</div>
+
+<div id="modal" class="modal hidden"><div class="inner" id="modalInner"></div></div>
+
+<script>
+/* =========================================================
+   路線データ（川島都市圏路線図より）
+   ========================================================= */
+const LINES_SRC = [
+ {id:'TK',name:'島浜線',co:'KR京日本',mk:'T/K',color:'#1b7fe0',st:'T13:洲河崎,T12:門前,T11:腰が原,T10:平上,T09:屋敷原,T08:雛社,T07:笹崎,T06:日築城,T05:西里新町,T04:阿見坂,T03:川島望通,T02:西町銀座,T01:川島,K02:中上川,K03:奥重,K04:倉竹,K05:久原塚,K06:利賀浦,K07:糸里,K08:津和,K09:しきめ,K10:西海王,K11:海王,K12:東海王,K13:時佐山,K14:海王ふれあいパーク,K15:海王大学,K16:須賀浦,K17:内浦,K18:矢幡,K19:三秦,K20:豊麦,K21:藤澤,K22:南七日市,K23:七日市,K24:飯洲,K25:徳富,K26:豊泉温泉,K27:九軒茶屋,K28:太良,K29:花娘川,K30:すみれ台,K31:波引谷,K32:下港公園,K33:下港'},
+ {id:'B',name:'千波線',co:'KR京日本',mk:'B',color:'#33a37f',st:'B01:川島,B02:中上川,B03:奥重,B04:倉竹,B05:板橋,B06:篝火島,B07:新倉竹,B08:小郷,B09:さつきが丘,B10:鹿木,B11:原石町,B12:千波岩原,B13:和賀岸,B14:日生川口,B15:千波湖,B16:井川湯元'},
+ {id:'SS',name:'佐川本線',co:'佐川鉄道',mk:'SS',color:'#0f2c6b',st:'SS01:川島,SS02:西町銀座,SS03:西町岬,SS04:緑が浜,SS05:新鳶島,SS06:鳶島,SS07:火宮参道,SS08:佐雅野'},
+ {id:'ST',name:'大神湖線',co:'佐川鉄道',mk:'ST',color:'#2f55a8',st:'ST01:川島,ST02:新奥重,ST03:北倉竹,ST04:小坂,ST05:御影橋,ST06:浅賀台,ST07:神谷町,ST08:金が山,ST09:余木,ST10:尾賀公園,ST11:宇嘉台,ST12:梶平サーキット前,ST13:梶ケ丘,ST14:崗狭川,ST15:常田,ST16:大神湖'},
+ {id:'MK',name:'川島線',co:'三川電鉄',mk:'M',color:'#7a2448',st:'M01:北倉竹,M02:南小坂,M03:桜小坂御影口,M04:浅賀,M05:西瀬川北口,M06:芦野,M07:加奈町,M08:浜沢町,M09:川瀬町,M10:薬師永良,M11:永久佐,M12:稲生,M13:兎野山,M14:古野間,M15:羽竜,M16:能見市,M17:保野,M18:今芳川,M19:柚野町,M20:川幡町,M21:西七市,M22:七日市,M23:隈川,M24:吾妻三条,M25:柏町,M26:松任,M27:櫨屋敷,M28:九蘭野,M29:桜地'},
+ {id:'MI',name:'糸里線',co:'三川電鉄',mk:'M',color:'#a8456f',st:'M48:原石町,M47:八沢田,M45:南薬師,M44:広江,M43:北糸里,M42:糸里,M41:糸里港'},
+ {id:'SK',name:'井川高速線',co:'埼水電鉄',mk:'SK',color:'#79b84a',st:'SK01:大神湖,SK02:新大神湖,SK03:井川崎,SK04:井川,SK05:井川湯元,SK06:千波湖北,SK07:白雲下町,SK08:雲山温泉,SK09:忍技村,SK10:七日市,SK11:東島'},
+ {id:'SM',name:'今城線',co:'埼水電鉄',mk:'SM',color:'#4c9a36',st:'SM01:北大神本町,SM02:北大神市,SM03:城河原海岸,SM04:今城神社,SM05:紅が咲,SM06:上今城,SM07:今城,SM08:今城学園前,SM09:角巻橋,SM10:航空公園,SM11:大神湖'},
+ {id:'AR',name:'有田本線',co:'有田電鉄',mk:'AR',color:'#47b4cc',st:'AR01:有田,AR02:有田新都心,AR03:向日町,AR04:深目白宮,AR05:有電高柳,AR06:有田紗川,AR07:蹄光寺坂,AR08:飛龍原,AR09:本涼瀬,AR10:西涼瀬,AR11:高馬ノ宮,AR12:土手口,AR13:十全,AR14:小栗坂,AR15:有電会沢,AR16:中藤井,AR17:八重川,AR18:北八重,AR19:須賀浦,AR20:有電内浦,AR21:想掛,AR22:東想掛,AR23:会浜,AR24:清光海岸,AR61:新須賀浦'},
+ {id:'KH',name:'京北本線',co:'京北鉄道',mk:'KH',color:'#3f8f82',st:'KH01:下港,KH02:新東島,KH03:鷺城,KH04:九軒茶屋,KH05:茶屋桜町'},
+ {id:'KN',name:'北波線',co:'藍原旅客鉄道',mk:'○',color:'#25b0bd',st:':北大神本町,:白北西町,:山水,:浜の下,:西波止,:波止海岸'},
+ {id:'A',name:'下林線',co:'藍原旅客鉄道',mk:'A',color:'#16879a',st:'A01:下港,A02:宮野上,A03:北宮野,A04:神楽橋,A05:上ヶ丘,A05-1:旧改,A06:羽山,A07:羽山西,A08:俵原,A09:不全,A10:下吉田,A11:山越,A12:大賀,A13:布瀬山,A14:布瀬山北,A15:佐奈海岸,A16:西佐奈,A17:中市橋,A18:峰,A19:雉浜,A20:大村ビーチ前,A21:波止海岸,A22:蕗,A23:筒地上,A24:義原,A25:紅垂,A26:浦田,A27:唐林'},
+ {id:'HH',name:'星影線',co:'星影電鉄',mk:'HH',color:'#c9a823',st:'HH01:下港,HH02:西下港,HH03:上豊,HH04:大鳩台,HH05:東雲中町,HH06:鳥の宮,HH07:下港美術大学入口,HH08:春沢,HH09:東結松,HH10:結松,HH11:竹寺口,HH12:元田,HH13:星影中郷,HH14:星影,HH15:篠倉不動,HH16:星影学園前,HH17:間沼,HH18:桜大町,HH19:西大町,HH20:伊和原,HH21:畑戸,HH22:錦平,HH23:鶴沢,HH24:棚俣,HH25:武見,HH26:時村,HH27:稲が原,HH28:荻里,HH29:琴原,HH30:元宿,HH91:雲山温泉'},
+ {id:'S1',name:'地下鉄 中央線',co:'川島地下鉄',mk:'①',color:'#f08a00',st:'101:西浦,102:川島ふ頭,103:川島今街,104:川島,105:院町,106:モーゼシティ,107:徳梁,108:松屋町,109:石門,110:川島望通,111:伊保,112:山石,113:五文村,114:喜光地,115:喜光地発電所,116:雪峰湖'},
+ {id:'S2',name:'地下鉄 空港線',co:'川島地下鉄',mk:'②',color:'#78bd3c',st:'221:芝浦町,222:中上川団地,223:海響通,224:川島,225:千京門,226:京日本橋,227:京川,228:川島中央,229:柳元町,230:国立医療センター,231:阿見坂,232:保立坂,233:川島空港第1ターミナル'},
+ {id:'S3',name:'地下鉄 千京門線',co:'川島地下鉄',mk:'③',color:'#4fb0aa',st:'301:緑が浜,302:徳梁,303:西町浦宿,304:千京門,305:城東,306:中上川親水公園,307:政府庁舎,308:梁居寺,309:北倉竹'},
+ {id:'S4',name:'地下鉄 臨港線',co:'川島地下鉄',mk:'④',color:'#3a6db8',st:'401:鳶島新都心,402:夢みなと,403:水郷山,404:川島港旅客ターミナル,405:川島ふ頭,406:中上川水再生センター,407:中上浜,408:芝浦町,410:東奥重,411:北倉竹'},
+ {id:'S5',name:'地下鉄 城北線',co:'川島地下鉄',mk:'⑤',color:'#e4467a',st:'501:鳶島,502:北鳶島,503:辻部,504:尊寺文化公園,505:川島望通,506:城北,507:川島中央,508:華咲町,509:川大前,510:江東町,511:浅賀台'}
+];
+const LINES = {}; const LINE_ORDER = [];
+const STATION_LINES = {}; // 駅名 -> [lineId]
+for (const L of LINES_SRC){
+  L.stations = L.st.split(',').map(s=>{const i=s.indexOf(':');return {code:s.slice(0,i),name:s.slice(i+1)}});
+  LINES[L.id]=L; LINE_ORDER.push(L.id);
+  for (const s of L.stations){ (STATION_LINES[s.name] ||= []); if(!STATION_LINES[s.name].includes(L.id)) STATION_LINES[s.name].push(L.id); }
+}
+const DEPOTS = {TK:['腰が原','腰が原車両基地'],B:['原石町','千波車両基地'],SS:['佐雅野','佐雅野車庫'],ST:['金が山','金が山車両基地'],MK:['能見市','能見車両基地'],MI:['糸里港','糸里港車庫'],SK:['井川','井川検車区'],SM:['今城','今城車庫'],AR:['有田','有田車両基地'],KH:['茶屋桜町','茶屋桜町車庫'],KN:['北大神本町','北波検車区'],A:['唐林','唐林車両基地'],HH:['星影','星影工場'],S1:['雪峰湖','雪峰湖車両基地'],S2:['川島空港第1ターミナル','空港線車両基地'],S3:['梁居寺','梁居寺検車区'],S4:['鳶島新都心','鳶島車両基地'],S5:['江東町','江東車両基地']};
+const numDigit = code => { if(!code) return null; const m=String(code).match(/(\d)(?:-\d)?$/); return m?m[1]:null; };
+const linesOf = st => STATION_LINES[st] || [];
+const PRESETS = [
+  {id:'center',name:'川島中心エリア（おすすめ）',lines:['TK','B','SS','ST','S1','S2']},
+  {id:'east',name:'東部・下港エリア',lines:['TK','MK','SK','KH','HH','A']},
+  {id:'north',name:'北部・大神湖エリア',lines:['SM','SK','ST','B','KN','A','HH']},
+  {id:'south',name:'南部・海王エリア',lines:['TK','AR','MK','MI','B','S4']},
+  {id:'subway',name:'地下鉄＋島浜線',lines:['TK','S1','S2','S3','S4','S5']},
+  {id:'all',name:'全路線（上級・長期戦）',lines:LINE_ORDER.slice()},
+];
+
+/* =========================================================
+   デッキ構築
+   ========================================================= */
+function buildDeck(active=LINE_ORDER){
+  const deck=[]; let n=0;
+  const add=c=>{c.id='c'+(n++);deck.push(c)};
+  for (const id of active){
+    const L=LINES[id]; const ss=L.stations; const len=ss.length;
+    // 特殊化する駅（決め打ち：通過待ち＝1/3地点、当駅止まり＝2/3地点）
+    const skipIdx = len>=8 ? Math.floor(len/3) : -1;
+    const revIdx  = len>=8 ? Math.floor(len*2/3) : -1;
+    ss.forEach((s,i)=>{
+      let type='normal'; if(i===skipIdx) type='skip'; else if(i===revIdx) type='rev';
+      add({type,line:id,station:s.name,code:s.code});
+    });
+    // 長い路線は通過待ち・当駅止まりをもう1枚ずつ
+    if(len>=20){
+      const a=ss[Math.floor(len/6)], b=ss[Math.floor(len*5/6)];
+      add({type:'skip',line:id,station:a.name,code:a.code,dup:1});
+      add({type:'rev',line:id,station:b.name,code:b.code,dup:1});
+    }
+    const [near,dname]=DEPOTS[id];
+    add({type:'depot',line:id,station:near,name:dname});
+    if(len>=15) add({type:'depot',line:id,station:near,name:dname});
+  }
+  for (const st of Object.keys(STATION_LINES)) if(STATION_LINES[st].filter(l=>active.includes(l)).length>=2) add({type:'gate',station:st});
+  const nt=Math.max(4,Math.round(active.length*1.2));
+  for (let i=0;i<nt;i++) add({type:'ticket'});
+  return deck;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+/* =========================================================
+   ゲームエンジン（ホスト側で実行）
+   ========================================================= */
+class Engine{
+  constructor(players,opts={}){
+    this.active=opts.lines||LINE_ORDER.slice(); this.rules=opts.rules||{};
+    this.players=players.map(p=>({...p,hand:[],declared:false}));
+    this.deck=shuffle(buildDeck(this.active));
+    this.discard=[]; this.dir=1; this.turn=Math.floor(Math.random()*this.players.length);
+    this.requiredLine=null; this.drawn=null; this.vuln=null; this.winner=null; this.log=[]; this.seq=0; this.events=[];
+    for(let r=0;r<7;r++) for(const p of this.players) p.hand.push(this.deck.pop());
+    // 最初の場札は通常駅カード
+    let i=this.deck.findIndex(c=>c.type==='normal');
+    this.discard.push(this.deck.splice(i,1)[0]);
+    this.addLog(`🚉 ${this.top.station}駅（${LINES[this.top.line].name}）から出発！`);
+    this.addLog(`${this.players[this.turn].name} さんの番から`);
+  }
+  get top(){return this.discard[this.discard.length-1]}
+  addLog(s){this.log.push(s); if(this.log.length>60) this.log.shift()}
+  event(e){this.events.push({...e,k:++this.seq})}
+  matchLines(){return this.requiredLine ? [this.requiredLine] : linesOf(this.top.station).filter(l=>this.active.includes(l))}
+  next(k=1){const n=this.players.length;return ((this.turn+this.dir*k)%n+n)%n}
+  drawCards(p,k){
+    const got=[];
+    for(let i=0;i<k;i++){
+      if(!this.deck.length){
+        const top=this.discard.pop(); this.deck=shuffle(this.discard); this.discard=[top];
+        if(this.deck.length) this.addLog('🔄 捨て札を混ぜて山札に戻しました');
+      }
+      if(!this.deck.length) break;
+      const c=this.deck.pop(); p.hand.push(c); got.push(c);
+    }
+    if(p.hand.length>1) p.declared=false;
+    return got;
+  }
+  // 1枚単独で出せるか
+  canPlay(pi,card){
+    const p=this.players[pi]; const m=this.matchLines();
+    if(card.type==='ticket') return p.hand.length>1 && !p.declared;
+    if(card.type==='gate') return this.gatePairs(pi,card).length>0;
+    if(m.includes(card.line)) return true;
+    if(this.requiredLine) return false;
+    const R=this.rules||{};
+    if(R.company && m.some(l=>LINES[l].co===LINES[card.line].co)) return true;
+    if(R.digit && card.type!=='depot' && this.top.type!=='depot' && numDigit(card.code)!=null && numDigit(card.code)===numDigit(this.top.code)) return true;
+    return false;
+  }
+  gatePairs(pi,gate){
+    const p=this.players[pi]; const m=this.matchLines();
+    if(!linesOf(gate.station).some(l=>m.includes(l))) return [];
+    return p.hand.filter(c=>c.id!==gate.id && c.station===gate.station && c.line);
+  }
+  playableIds(pi){
+    const p=this.players[pi];
+    if(this.winner!=null || pi!==this.turn) return [];
+    const list = this.drawn ? p.hand.filter(c=>c.id===this.drawn) : p.hand;
+    return list.filter(c=>this.canPlay(pi,c)).map(c=>c.id);
+  }
+  // ---- アクション ----
+  act(pi,a){
+    if(this.winner!=null) return 'ゲームは終了しています';
+    const p=this.players[pi];
+    if(a.type==='catch'){
+      if(this.vuln==null || this.vuln===pi) return '指摘できません';
+      const v=this.players[this.vuln];
+      if(v.hand.length!==1 || v.declared){this.vuln=null;return '指摘できません'}
+      this.drawCards(v,2); this.addLog(`🚨 ${p.name} さんが指摘！ ${v.name} さんはANO!宣言忘れで2枚追加`);
+      this.event({type:'catch',who:v.name,by:p.name}); this.vuln=null; return null;
+    }
+    if(pi!==this.turn) return 'あなたの番ではありません';
+    if(a.type==='declare'){
+      if(p.hand.length>3||p.hand.length<2) return '手札が2〜3枚のときに宣言できます';
+      p.declared=true; this.addLog(`📣 ${p.name}「ANO!」`); this.event({type:'kw',who:p.name}); return null;
+    }
+    if(a.type==='draw'){
+      if(this.drawn) return 'すでに引いています';
+      this.vuln=null;
+      const [c]=this.drawCards(p,1);
+      this.addLog(`${p.name} さんが山札から1枚引きました`);
+      if(c && this.canPlay(pi,c)){ this.drawn=c.id; return null; }
+      this.endTurn(1); return null;
+    }
+    if(a.type==='pass'){
+      if(!this.drawn) return 'まず山札から引いてください';
+      this.addLog(`${p.name} さんはパス`); this.endTurn(1); return null;
+    }
+    if(a.type==='play'){
+      const card=p.hand.find(c=>c.id===a.id); if(!card) return 'カードがありません';
+      if(this.drawn && card.id!==this.drawn) return '引いたカードしか出せません';
+      if(!this.canPlay(pi,card)) return 'そのカードは出せません';
+      this.vuln=null;
+      let topCard=card; const played=[card];
+      if(card.type==='gate'){
+        const pairs=this.gatePairs(pi,card); const pair=pairs.find(c=>c.id===a.pair)||pairs[0];
+        played.push(pair); topCard=pair;
+      }
+      if(card.type==='ticket'){
+        if(!LINES[a.line]) return '路線を選んでください';
+      }
+      p.hand=p.hand.filter(c=>!played.includes(c));
+      for(const c of played) this.discard.push(c);
+      this.drawn=null;
+      // ログ
+      if(card.type==='gate') this.addLog(`🟧 ${p.name}：改札で乗り換え！ ${card.station}駅（${LINES[topCard.line].name}）へ 2枚出し`);
+      else if(card.type==='ticket') this.addLog(`🎫 ${p.name}：乗車券！ 次は「${LINES[a.line].name}」を指定`);
+      else if(card.type==='depot') this.addLog(`🏭 ${p.name}：${card.name}（${LINES[card.line].name}）+2`);
+      else this.addLog(`${p.name}：${LINES[card.line].name} ${card.station}${card.type==='skip'?'【通過待ち】':card.type==='rev'?'【当駅止まり】':''}`);
+      if(card.type==='ticket') this.requiredLine=a.line; else this.requiredLine=null;
+      // 勝利
+      if(p.hand.length===0){
+        this.winner=pi; this.addLog(`🏆 ${p.name} さんが上がり！ 終点到着！`); this.event({type:'win',who:p.name}); return null;
+      }
+      if(p.hand.length===1){
+        if(p.declared){ this.event({type:'kw',who:p.name}); }
+        else { this.vuln=pi; }
+      } else p.declared=false;
+      // 効果
+      const eff=topCard.type, n=this.players.length;
+      if(eff==='skip'){ this.addLog(`⏭ ${this.players[this.next(1)].name} さんは通過待ちで飛ばされます`); this.endTurn(2); }
+      else if(eff==='rev'){
+        this.dir*=-1; this.addLog('🔁 当駅止まり！ 進行方向が逆になりました');
+        if(n===2) this.endTurn(2); else this.endTurn(1);
+      }
+      else if(eff==='depot'){
+        const vi=this.next(1); const v=this.players[vi]; this.drawCards(v,2);
+        this.addLog(`🏭 ${v.name} さんは2枚引いて休み`); this.endTurn(2);
+      }
+      else this.endTurn(1);
+      return null;
+    }
+    return '不明な操作';
+  }
+  endTurn(k){ this.drawn=null; this.turn=this.next(k); }
+  view(pi){
+    return {
+      phase:'play', me:pi, turn:this.turn, dir:this.dir, winner:this.winner,
+      players:this.players.map(p=>({name:p.name,count:p.hand.length,cpu:!!p.cpu,declared:p.declared})),
+      hand:this.players[pi].hand, top:this.top, requiredLine:this.requiredLine, drawn:this.turn===pi?this.drawn:null,
+      playable:this.playableIds(pi), vuln:this.vuln, active:this.active, rules:this.rules, deckCount:this.deck.length, log:this.log.slice(-30), events:this.events.slice(-5)
+    };
+  }
+  // ---- CPU ----
+  cpuDecide(pi){
+    const p=this.players[pi];
+    const ids=this.playableIds(pi);
+    if(p.hand.length<=3 && p.hand.length>=2 && !p.declared && ids.length && Math.random()<0.88) return {type:'declare'};
+    if(!ids.length) return this.drawn ? {type:'pass'} : {type:'draw'};
+    const cards=p.hand.filter(c=>ids.includes(c.id));
+    const nextCount=this.players[this.next(1)].hand.length;
+    const score=c=>{
+      let s=Math.random();
+      if(c.type==='gate') s+=6;
+      if(c.type==='depot'||c.type==='skip') s+= nextCount<=2?8:2;
+      if(c.type==='rev') s+=1.5;
+      if(c.type==='ticket') s-= (cards.length>1?5:0);
+      if(c.line) s+= linesOf(c.station).length*0.6; // 乗換駅を残さない
+      return s;
+    };
+    cards.sort((a,b)=>score(b)-score(a));
+    const c=cards[0];
+    if(c.type==='ticket'){
+      const cnt={}; for(const h of p.hand) if(h.line) cnt[h.line]=(cnt[h.line]||0)+1;
+      let best=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0] || this.active[Math.floor(Math.random()*this.active.length)];
+      return {type:'play',id:c.id,line:best};
+    }
+    if(c.type==='gate'){ const pr=this.gatePairs(pi,c); return {type:'play',id:c.id,pair:pr[0].id}; }
+    return {type:'play',id:c.id};
+  }
+}
+
+/* =========================================================
+   ネットワーク / セッション
+   ========================================================= */
+const PREFIX='kawashima-uno-v1-';
+const S={ settings:{preset:'center',lines:PRESETS[0].lines.slice(),rules:{digit:true,company:false}}, role:null, peer:null, conns:{}, hostConn:null, roster:[], engine:null, myName:'', code:'', view:null, cpuTimer:null, catchTimer:null, lastEventK:0 };
+const $=id=>document.getElementById(id);
+function show(id){for(const s of ['title','lobby','game']) $(s).classList.toggle('hidden',s!==id)}
+function genCode(){const ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<5;i++)s+=ch[Math.floor(Math.random()*ch.length)];return s}
+function myNameVal(){let n=$('nameInput').value.trim()||'ななし';try{localStorage.setItem('kwsm_name',n)}catch(e){}return n}
+try{$('nameInput').value=localStorage.getItem('kwsm_name')||''}catch(e){}
+
+// ---- ホスト ----
+function hostRoom(){
+  if(typeof Peer==='undefined'){ $('titleErr').textContent='通信ライブラリを読み込めませんでした'; return; }
+  S.role='host'; S.myName=myNameVal(); S.code=genCode();
+  S.roster=[{name:S.myName,cpu:false,peer:'host'}];
+  $('titleErr').textContent='部屋を作成中…';
+  S.peer=new Peer(PREFIX+S.code);
+  S.peer.on('open',()=>{ $('titleErr').textContent=''; show('lobby'); renderLobby(); });
+  S.peer.on('error',e=>{ if(e.type==='unavailable-id'){S.peer.destroy();hostRoom();return} $('titleErr').textContent='通信エラー: '+e.type; });
+  S.peer.on('connection',conn=>{
+    conn.on('data',d=>onHostData(conn,d));
+    conn.on('close',()=>onGuestLeft(conn.peer));
+  });
+}
+function onHostData(conn,d){
+  if(d.t==='join'){
+    if(S.engine){ conn.send({t:'err',m:'ゲームはすでに開始しています'}); setTimeout(()=>conn.close(),500); return; }
+    if(S.roster.length>=6){ conn.send({t:'err',m:'満員です'}); setTimeout(()=>conn.close(),500); return; }
+    S.conns[conn.peer]=conn;
+    S.roster.push({name:String(d.name).slice(0,10),cpu:false,peer:conn.peer});
+    broadcastLobby();
+  } else if(d.t==='act'){
+    if(!S.engine) return;
+    const pi=S.engine.players.findIndex(p=>p.peer===conn.peer);
+    if(pi<0) return;
+    const err=S.engine.act(pi,d.a);
+    if(err) conn.send({t:'err',m:err});
+    syncAll();
+  } else if(d.t==='restart'){}
+}
+function onGuestLeft(peerId){
+  delete S.conns[peerId];
+  if(!S.engine){ S.roster=S.roster.filter(r=>r.peer!==peerId); broadcastLobby(); return; }
+  const p=S.engine.players.find(p=>p.peer===peerId);
+  if(p){ p.cpu=true; p.name+='(CPU)'; S.engine.addLog(`⚠ 通信が切れたためCPUが代わりに運転します`); syncAll(); }
+}
+function broadcastLobby(){
+  const lv={phase:'lobby',roster:S.roster.map(r=>({name:r.name,cpu:r.cpu})),code:S.code,settings:S.settings};
+  for(const c of Object.values(S.conns)){ try{ c.send({t:'view',v:lv}); }catch(e){} }
+  renderLobby();
+}
+function startGame(){
+  if(S.roster.length<2){ alert('2人以上必要です（CPUを追加できます）'); return; }
+  S.engine=new Engine(S.roster,{lines:S.settings.lines,rules:{...S.settings.rules}});
+  S.lastEventK=0;
+  show('game'); syncAll();
+}
+function syncAll(){
+  const E=S.engine; if(!E) return;
+  E.players.forEach((p,i)=>{
+    if(p.peer && p.peer!=='host' && !p.cpu){ const c=S.conns[p.peer]; c && c.open && c.send({t:'view',v:E.view(i)}); }
+  });
+  const hi=E.players.findIndex(p=>p.peer==='host');
+  render(E.view(hi));
+  scheduleCpu();
+}
+function scheduleCpu(){
+  const E=S.engine; if(!E||E.winner!=null) return;
+  // CPUによる指摘
+  if(E.vuln!=null && !S.catchTimer){
+    const v=E.vuln;
+    const catchers=E.players.map((p,i)=>i).filter(i=>i!==v && E.players[i].cpu);
+    if(catchers.length && Math.random()<0.55){
+      S.catchTimer=setTimeout(()=>{S.catchTimer=null; if(E.vuln===v){E.act(catchers[Math.floor(Math.random()*catchers.length)],{type:'catch'}); syncAll();}},700+Math.random()*500);
+    }
+  }
+  const cur=E.players[E.turn];
+  if(cur.cpu && !S.cpuTimer){
+    S.cpuTimer=setTimeout(()=>{
+      S.cpuTimer=null; if(E!==S.engine||E.winner!=null) return;
+      const t=E.turn; if(!E.players[t].cpu) return;
+      const a=E.cpuDecide(t); E.act(t,a); syncAll();
+    }, 1300+Math.random()*500);
+  }
+}
+
+// ---- ゲスト ----
+function joinRoom(){
+  if(typeof Peer==='undefined'){ $('titleErr').textContent='通信ライブラリを読み込めませんでした'; return; }
+  const code=$('codeInput').value.trim().toUpperCase();
+  if(code.length!==5){ $('titleErr').textContent='5文字の部屋コードを入力してください'; return; }
+  S.role='guest'; S.myName=myNameVal(); S.code=code;
+  $('titleErr').textContent='接続中…';
+  S.peer=new Peer();
+  S.peer.on('open',()=>{
+    const conn=S.peer.connect(PREFIX+code,{reliable:true}); S.hostConn=conn;
+    const to=setTimeout(()=>{ if(!conn.open) $('titleErr').textContent='部屋が見つかりません'; },8000);
+    conn.on('open',()=>{ clearTimeout(to); $('titleErr').textContent=''; conn.send({t:'join',name:S.myName}); });
+    conn.on('data',d=>{
+      if(d.t==='view'){ if(d.v.phase==='lobby'){ S.lobbyView=d.v; show('lobby'); renderLobby(); } else { show('game'); render(d.v); } }
+      else if(d.t==='err'){ toastErr(d.m); if(!S.view) $('titleErr').textContent=d.m; }
+    });
+    conn.on('close',()=>{ alert('ホストとの接続が切れました'); location.href=location.pathname; });
+  });
+  S.peer.on('error',e=>{ $('titleErr').textContent= e.type==='peer-unavailable' ? '部屋が見つかりません' : '通信エラー: '+e.type; });
+}
+
+// ---- ソロ ----
+function soloGame(){
+  S.role='solo'; S.myName=myNameVal();
+  const n=+$('cpuNum').value;
+  const cpuNames=['しまはま','さがわ','みかわ','ほしかげ','ありた'];
+  S.roster=[{name:S.myName,cpu:false,peer:'host'}];
+  for(let i=0;i<n;i++) S.roster.push({name:'CPU '+cpuNames[i],cpu:true});
+  startGame();
+}
+
+// ---- 操作送信 ----
+function send(a){
+  if(S.role==='guest'){ S.hostConn && S.hostConn.send({t:'act',a}); }
+  else { const E=S.engine; const hi=E.players.findIndex(p=>p.peer==='host'); const err=E.act(hi,a); if(err) toastErr(err); syncAll(); }
+}
+
+/* =========================================================
+   描画
+   ========================================================= */
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function stClass(name){return name.length>=8?'xs':name.length>=5?'s':''}
+function cardHTML(c,extra=''){
+  if(c.type==='ticket') return `<div class="card ticket ${extra}" data-id="${c.id}"><div class="band">川島県内 全線</div><div class="body"><div class="tk">乗車券</div><div class="tks">どの路線にも乗れる</div><div class="tks" style="margin-top:8px">次の路線を指定</div></div></div>`;
+  if(c.type==='gate') return `<div class="card gate ${extra}" data-id="${c.id}"><div class="band">乗換改札</div><div class="body"><div class="gi">改札</div><div class="st ${stClass(c.station)}">${esc(c.station)}</div><div class="tks" style="font-size:10px;margin-top:4px">同じ駅のカードと2枚出し</div></div></div>`;
+  const L=LINES[c.line];
+  if(c.type==='depot') return `<div class="card depot ${extra}" style="--c:${L.color}" data-id="${c.id}"><div class="band"><span class="mk">${esc(L.mk)}</span>${esc(L.name)}</div><div class="body"><div class="big">+2</div><div class="lbl">車両基地</div><div class="near">${esc(c.name)}</div><div class="near">最寄: ${esc(c.station)}</div></div><div class="foot"></div></div>`;
+  const tag = c.type==='skip'?'<div class="tag">⏭ 通過待ち</div>':c.type==='rev'?'<div class="tag">🔁 当駅止まり</div>':'';
+  return `<div class="card ${c.type} ${extra}" style="--c:${L.color}" data-id="${c.id}"><div class="band"><span class="mk">${esc(L.mk)}</span>${esc(L.name)}</div><div class="body">${c.code?`<div class="num">${esc(c.code)}</div>`:''}<div class="st ${stClass(c.station)}">${esc(c.station)}</div></div>${tag}<div class="foot"></div></div>`;
+}
+function lineChip(id){const L=LINES[id];return `<span class="lchip" style="--c:${L.color}">${esc(L.mk)} ${esc(L.name)}</span>`}
+
+function settingsHTML(st,editable){
+  const dis=editable?'':'disabled';
+  return `<div class="set">
+   <div class="row"><span>路線セット</span><select data-s="preset" ${dis}>${PRESETS.map(p=>`<option value="${p.id}" ${st.preset===p.id?'selected':''}>${p.name}</option>`).join('')}<option value="custom" ${st.preset==='custom'?'selected':''}>カスタム</option></select></div>
+   <div class="lchk">${LINE_ORDER.map(id=>`<label><input type="checkbox" data-line="${id}" ${st.lines.includes(id)?'checked':''} ${dis}>${lineChip(id)}</label>`).join('')}</div>
+   <label><input type="checkbox" data-r="digit" ${st.rules.digit?'checked':''} ${dis}>駅ナンバーの末尾の数字が同じなら出せる（UNOの数字ルール）</label><br>
+   <label><input type="checkbox" data-r="company" ${st.rules.company?'checked':''} ${dis}>同じ鉄道会社の路線どうしも出せる</label>
+   <div class="muted">路線数が多いほど出せるカードが減り長期戦になります。4〜6路線がおすすめ。</div></div>`;
+}
+function renderSettings(){
+  const ed = S.role!=='guest';
+  for(const [cid,editable,st] of [['settingsTitle',true,S.settings],['settingsLobby',S.role==='host',S.role==='guest'?(S.lobbyView?.settings||S.settings):S.settings]]){
+    const el=$(cid); el.innerHTML=settingsHTML(st,editable);
+    if(!editable) continue;
+    el.querySelector('[data-s=preset]').onchange=e=>{const p=PRESETS.find(x=>x.id===e.target.value); S.settings.preset=e.target.value; if(p) S.settings.lines=p.lines.slice(); if(e.target.value==='all') S.settings.rules.company=true; onSettings();};
+    el.querySelectorAll('[data-line]').forEach(c=>c.onchange=()=>{const id=c.dataset.line; S.settings.lines=c.checked?LINE_ORDER.filter(l=>l===id||S.settings.lines.includes(l)):S.settings.lines.filter(l=>l!==id); if(S.settings.lines.length<2){S.settings.lines.push(id);} S.settings.preset='custom'; onSettings();});
+    el.querySelectorAll('[data-r]').forEach(c=>c.onchange=()=>{S.settings.rules[c.dataset.r]=c.checked; onSettings();});
+  }
+}
+function onSettings(){ if(S.role==='host') broadcastLobby(); else renderSettings(); }
+renderSettings();
+
+function renderLobby(){
+  const isHost=S.role==='host';
+  const v= isHost ? {roster:S.roster,code:S.code} : (S.lobbyView||{roster:[],code:S.code});
+  $('lobbyCode').textContent=v.code;
+  $('lobbyCount').textContent=v.roster.length;
+  $('lobbyList').innerHTML=v.roster.map((r,i)=>`<li><span>${i===0?'👑 ':''}${esc(r.name)}${r.cpu?' <span class="muted">(CPU)</span>':''}</span>${isHost&&r.cpu?`<button class="btn ghost" data-rm="${i}" style="padding:4px 10px">外す</button>`:''}</li>`).join('');
+  $('hostCtl').classList.toggle('hidden',!isHost);
+  $('guestWait').classList.toggle('hidden',isHost);
+  renderSettings();
+  $('lobbyList').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{S.roster.splice(+b.dataset.rm,1);broadcastLobby()});
+}
+
+function render(v){
+  S.view=v;
+  const myTurn=v.turn===v.me && v.winner==null;
+  // プレイヤー
+  $('players').innerHTML=v.players.map((p,i)=>`<div class="pchip ${i===v.turn?'turn':''} ${i===v.me?'me':''}">${p.cpu?'🤖':'🧑'} ${esc(p.name)} <span class="n">${p.count}</span>${p.count===1&&p.declared?'<span class="kw">ANO!</span>':''}</div>`).join('');
+  $('dirIcon').textContent=v.dir===1?'⟳':'⟲';
+  // 場
+  $('topCard').innerHTML=cardHTML(v.top,'big');
+  const tl=linesOf(v.top.station).filter(l=>(v.active||LINE_ORDER).includes(l));
+  $('topLines').innerHTML = v.top.station
+    ? `<div style="width:100%;font-weight:900;margin-bottom:4px">${esc(v.top.station)}駅</div>`+tl.map(lineChip).join('')
+    : `<div style="width:100%;font-weight:900">乗車券（路線指定）</div>`;
+  if(v.top.station && !v.requiredLine){ const d=numDigit(v.top.code); const extra=[]; if(v.rules?.digit && d!=null && v.top.type!=='depot') extra.push(`駅ナンバー末尾「${d}」のカード`); if(v.rules?.company) extra.push('同じ会社の路線'); if(extra.length) $('topLines').innerHTML+=`<div class="muted" style="width:100%;margin-top:6px">＋ ${extra.join('・')}も出せます</div>`; }
+  if(v.requiredLine){ $('reqLine').classList.remove('hidden'); $('reqLine').innerHTML=`🎫 乗車券で指定中：${lineChip(v.requiredLine)} のカードのみ出せます`; }
+  else $('reqLine').classList.add('hidden');
+  $('deckCount').textContent=`残り${v.deckCount}枚`;
+  $('log').innerHTML=v.log.slice().reverse().map(s=>`<div>${esc(s)}</div>`).join('');
+  // ステータス
+  let st='';
+  if(v.winner!=null) st = v.winner===v.me ? '🏆 あなたの勝ち！終点到着！' : `🏁 ${v.players[v.winner].name} さんの勝ち`;
+  else if(myTurn) st = v.drawn ? '引いたカードを出すか、パスしてください' : (v.playable.length?'あなたの番です。カードを選んでください':'出せるカードがありません。山札から引いてください');
+  else st = `${v.players[v.turn].name} さんの番…`;
+  $('status').textContent=st; $('status').classList.toggle('myturn',myTurn);
+  // 手札
+  const hand=v.hand.slice().sort((a,b)=>sortKey(a)-sortKey(b));
+  $('hand').innerHTML=hand.map(c=>{
+    const pl=v.playable.includes(c.id);
+    return cardHTML(c,(pl?'playable':(myTurn?'dim':''))+(v.drawn===c.id?' drawn':''));
+  }).join('');
+  $('hand').querySelectorAll('.card.playable').forEach(el=>el.onclick=()=>onCardClick(el.dataset.id));
+  // ボタン
+  const me=v.players[v.me];
+  $('deck').classList.toggle('can',myTurn&&!v.drawn&&!v.playable.length);
+  $('btnPass').classList.toggle('hidden',!(myTurn&&v.drawn));
+  const canKw=myTurn && v.hand.length>=2 && v.hand.length<=3;
+  $('btnKw').disabled=!canKw || me.declared;
+  $('btnKw').classList.toggle('on',me.declared);
+  $('btnKw').textContent=me.declared?'宣言済み':'ANO!';
+  $('btnCatch').classList.toggle('hidden',!(v.vuln!=null && v.vuln!==v.me && v.winner==null));
+  // イベント
+  for(const e of v.events||[]){
+    if(e.k<=S.lastEventK) continue; S.lastEventK=e.k;
+    if(e.type==='kw') toast(`${e.who}「ANO!」`);
+    if(e.type==='catch') toast(`指摘！ ${e.who} +2枚`);
+  }
+  // 勝利
+  if(v.winner!=null) showResult(v);
+}
+function sortKey(c){
+  const order={ticket:9000,gate:8000};
+  if(order[c.type]) return order[c.type];
+  return LINE_ORDER.indexOf(c.line)*100 + (c.type==='depot'?99:LINES[c.line].stations.findIndex(s=>s.name===c.station));
+}
+
+function onCardClick(id){
+  const v=S.view; const c=v.hand.find(x=>x.id===id);
+  if(c.type==='ticket') return pickLine(id);
+  if(c.type==='gate'){
+    const m=v.requiredLine?[v.requiredLine]:linesOf(v.top.station);
+    const pairs=v.hand.filter(x=>x.id!==id && x.station===c.station && x.line);
+    if(pairs.length===1) return send({type:'play',id,pair:pairs[0].id});
+    openModal(`<h2>改札で一緒に出すカードを選択</h2><p class="muted">選んだカードが場札（次の駅）になります</p><div class="row" id="pairRow">${pairs.map(p=>cardHTML(p,'playable')).join('')}</div><div class="row" style="margin-top:12px"><button class="btn ghost" onclick="closeModal()">キャンセル</button></div>`);
+    $('pairRow').querySelectorAll('.card').forEach(el=>{el.style.cursor='pointer';el.onclick=()=>{closeModal();send({type:'play',id,pair:el.dataset.id})}});
+    return;
+  }
+  send({type:'play',id});
+}
+function pickLine(id){
+  openModal(`<h2>🎫 乗車券：次の人が出す路線を選択</h2><div class="linegrid">${(S.view.active||LINE_ORDER).map(l=>`<button style="--c:${LINES[l].color}" data-l="${l}">${esc(LINES[l].mk)} ${esc(LINES[l].name)}<small>${esc(LINES[l].co)}</small></button>`).join('')}</div><button class="btn ghost" onclick="closeModal()">キャンセル</button>`);
+  $('modalInner').querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{closeModal();send({type:'play',id,line:b.dataset.l})});
+}
+function showResult(v){
+  const ranking=v.players.map((p,i)=>({...p,i})).sort((a,b)=>a.count-b.count);
+  const isHostLike=S.role!=='guest';
+  openModal(`<h2>🏁 終点です</h2><p style="font-size:20px;font-weight:900">${esc(v.players[v.winner].name)} さんの勝利！</p><ol>${ranking.map(p=>`<li>${esc(p.name)}：残り${p.count}枚</li>`).join('')}</ol><div class="row">${isHostLike?'<button class="btn primary" id="btnAgain">もう一度遊ぶ</button>':'<span class="muted">ホストが次のゲームを開始できます</span>'}<button class="btn ghost" onclick="closeModal()">盤面を見る</button><button class="btn ghost" onclick="location.href=location.pathname">タイトルへ</button></div>`);
+  const b=$('btnAgain'); if(b) b.onclick=()=>{closeModal(); if(S.engine){ S.roster=S.engine.players.map(p=>({name:p.name,cpu:p.cpu,peer:p.peer})); } startGame(); };
+}
+function openModal(h){$('modalInner').innerHTML=h;$('modal').classList.remove('hidden')}
+function closeModal(){$('modal').classList.add('hidden')}
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),1700)}
+function toastErr(t){const d=document.createElement('div');d.className='toast';d.style.background='#444';d.style.fontSize='18px';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),1700)}
+
+function showRules(){
+  const lines=((S.view&&S.view.active)||LINE_ORDER).map(id=>{const L=LINES[id];return `<div>${lineChip(id)} <span class="muted">${esc(L.co)}</span><div class="stlist">${L.stations.map(s=>{const t=linesOf(s.name).length>1;return t?`<b style="color:#fff">${esc(s.name)}</b>`:esc(s.name)}).join(' – ')}</div></div>`}).join('');
+  openModal(`<div class="rules"><h2>ルール</h2>
+  <p>場に出ている<b>駅に乗り入れている路線</b>のカードを1枚出します。出せない場合は山札から1枚引きます（引いたカードが出せればそのまま出せます）。手札が残り1枚になるときは「ANO!」と宣言。先に手札がなくなった人の勝ち！</p>
+  <h3>🔢 追加ルール（設定で切替）</h3><p><b>駅ナンバー一致：</b>駅ナンバーの末尾の数字が同じカードも出せます（例：T06日築城 の上に B16井川湯元）。UNOの数字合わせにあたります。<br><b>同じ会社：</b>同じ鉄道会社の路線のカードも出せます。</p>
+  <h3>🚉 駅カード</h3><p>路線の色と駅名が書かれた基本カード。たとえば場が「川島駅」なら、島浜線・千波線・佐川本線・大神湖線・地下鉄中央線・空港線のカードが出せます。</p>
+  <h3>⏭ 通過待ち</h3><p>次の人を飛ばして、2つ先の人の番になります（スキップ）。</p>
+  <h3>🔁 当駅止まり</h3><p>ターンの順番が逆回りになります（リバース）。2人対戦では通過待ちと同じ効果。</p>
+  <h3>🟧 改札（オレンジ）</h3><p>改札と同じ駅名のカードを持っているとき、その2枚をまとめて出せます。場の駅とその改札の駅が同じ路線でつながっていれば出せ、一緒に出した駅カードが新しい場札になります。</p>
+  <h3>🏭 車両基地（+2）</h3><p>次の人は山札から2枚引き、その番は休みです。</p>
+  <h3>🎫 乗車券</h3><p>路線に関係なくいつでも出せます。出した人は路線を1つ選び、次の人はその路線のカードを出します。<b>ANO!宣言後（最後の1枚）には出せません。</b></p>
+  <h3>📣 ANO!</h3><p>手札が2〜3枚の自分の番に「ANO!」ボタンを押してから出します。宣言せずに残り1枚になると、次の人が動く前に他のプレイヤーに指摘されて2枚追加になります。</p>
+  <h3>🗺 収録路線（太字は乗換駅）</h3>${lines}
+  <div class="row" style="margin-top:12px"><button class="btn primary" onclick="closeModal()">閉じる</button></div></div>`);
+}
+
+/* ===== イベント登録 ===== */
+$('btnHost').onclick=hostRoom;
+$('btnJoin').onclick=joinRoom;
+$('btnSolo').onclick=soloGame;
+$('btnRules').onclick=showRules; $('btnRules2').onclick=showRules;
+$('btnAddCpu').onclick=()=>{ if(S.roster.length>=6) return; const names=['しまはま','さがわ','みかわ','ほしかげ','ありた','きょうほく']; const used=S.roster.map(r=>r.name); const nm='CPU '+(names.find(n=>!used.includes('CPU '+n))||'?'); S.roster.push({name:nm,cpu:true}); broadcastLobby(); };
+$('btnStart').onclick=startGame;
+$('btnLeave').onclick=()=>location.href=location.pathname;
+$('btnCopy').onclick=()=>{ const url=location.origin+location.pathname+'?room='+S.code; navigator.clipboard?.writeText(url).then(()=>toastErr('コピーしました'),()=>prompt('このURLを共有してください',url)); };
+$('deck').onclick=()=>{ const v=S.view; if(v && v.turn===v.me && !v.drawn && v.winner==null) send({type:'draw'}); };
+$('btnPass').onclick=()=>send({type:'pass'});
+$('btnKw').onclick=()=>send({type:'declare'});
+$('btnCatch').onclick=()=>send({type:'catch'});
+$('modal').onclick=e=>{ if(e.target.id==='modal' && !(S.view&&S.view.winner!=null)) closeModal(); };
+(function(){ const r=new URLSearchParams(location.search).get('room'); if(r){ $('codeInput').value=r.toUpperCase(); } })();
+window.__KW={Engine,LINES,STATION_LINES,buildDeck,S};
+</script>
+</body>
+</html>
