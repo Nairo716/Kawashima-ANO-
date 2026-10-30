@@ -146,6 +146,11 @@ input[type=text]{background:#0d1828;border:1px solid var(--line);color:var(--tex
 .tgtgrid button{display:flex;align-items:center;gap:10px;background:#152640;border:2px solid var(--pc);color:#fff;border-radius:12px;padding:10px;font-family:inherit;font-weight:700;font-size:15px;text-align:left}
 .tgtgrid .ta{width:40px;height:40px;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;background:linear-gradient(135deg,var(--pc),#1b2c47);flex:0 0 auto}
 .tgtgrid .ta img{width:100%;height:100%;object-fit:cover}
+.hand .card.jump{box-shadow:0 0 0 3px #ff8a1f,0 0 22px 4px rgba(255,138,31,.8);animation:jmp .5s ease-in-out infinite alternate}
+.hand .card.jump::before{content:"⚡ジャンプ!";position:absolute;top:-2px;left:0;right:0;text-align:center;background:#ff3b55;color:#fff;font-size:11px;font-weight:900;z-index:3}
+@keyframes jmp{to{margin-bottom:12px}}
+.pend{color:#ff5a6a;font-size:22px}
+.linegrid button:disabled{opacity:.35;cursor:not-allowed;filter:grayscale(.6)}
 .flyback{position:fixed;z-index:39;width:40px;height:58px;margin:-29px 0 0 -20px;border-radius:6px;border:2px solid #fff;background:repeating-linear-gradient(45deg,#1f4f8f 0 6px,#1a4176 6px 12px);pointer-events:none;transition:transform .7s cubic-bezier(.4,0,.2,1)}
 .stlist{font-size:12px;color:var(--sub);line-height:1.6;margin:2px 0 8px}
 @media (max-width:600px){
@@ -368,6 +373,7 @@ const LINES = {}; const LINE_ORDER = [];
 const STATION_LINES = {}; // 駅名 -> [lineId]
 for (const L of LINES_SRC){
   L.stations = L.st.split(',').map(s=>{const i=s.indexOf(':');return {code:s.slice(0,i),name:s.slice(i+1)}});
+  L.stations.forEach((s,i)=>{ if(!s.code) s.code=L.id+(i%2?'7':'0'); }); // ナンバリングのない駅は0/7
   LINES[L.id]=L; LINE_ORDER.push(L.id);
   for (const s of L.stations){ (STATION_LINES[s.name] ||= []); if(!STATION_LINES[s.name].includes(L.id)) STATION_LINES[s.name].push(L.id); }
 }
@@ -408,7 +414,9 @@ function buildDeck(active=LINE_ORDER){
     add({type:'depot',line:id,station:near,name:dname});
     if(len>=15) add({type:'depot',line:id,station:near,name:dname});
   }
-  for (const st of Object.keys(STATION_LINES)) if(STATION_LINES[st].filter(l=>active.includes(l)).length>=2) add({type:'gate',station:st});
+  const nl=st=>STATION_LINES[st].filter(l=>active.includes(l)).length;
+  const gs=shuffle(Object.keys(STATION_LINES).filter(st=>nl(st)>=2)).sort((a,b)=>nl(b)-nl(a));
+  gs.slice(0,Math.max(3,Math.round(gs.length*0.35))).forEach(st=>add({type:'gate',station:st}));
   const nt=Math.max(4,Math.round(active.length*1.2));
   for (let i=0;i<nt;i++) add({type:'ticket'});
   return deck;
@@ -440,10 +448,7 @@ class Engine{
   drawCards(p,k){
     const got=[];
     for(let i=0;i<k;i++){
-      if(!this.deck.length){
-        const top=this.discard.pop(); this.deck=shuffle(this.discard); this.discard=[top];
-        if(this.deck.length) this.addLog('🔄 捨て札を混ぜて山札に戻しました');
-      }
+      if(!this.deck.length) this.refill();
       if(!this.deck.length) break;
       const c=this.deck.pop(); p.hand.push(c); got.push(c);
     }
@@ -454,8 +459,9 @@ class Engine{
   // 1枚単独で出せるか
   canPlay(pi,card){
     const p=this.players[pi]; const m=this.matchLines();
+    if(this.pending>0) return card.type==='depot';
     if(card.type==='ticket') return p.hand.length>1 && !p.declared;
-    if(card.type==='gate') return this.gatePairs(pi,card).length>0;
+    if(card.type==='gate') return this.gatePairs(pi,card).length>0 || (!this.requiredLine && this.top.station===card.station);
     if(m.includes(card.line)) return true;
     if(this.requiredLine) return false;
     const R=this.rules||{};
@@ -468,12 +474,26 @@ class Engine{
     if(!linesOf(gate.station).some(l=>m.includes(l))) return [];
     return p.hand.filter(c=>c.id!==gate.id && c.station===gate.station && c.line);
   }
+  jumpIds(pi){
+    if(this.winner!=null || pi===this.turn || this.pending>0 || !this.top.station) return [];
+    return this.players[pi].hand.filter(c=>c.type==='gate' && c.station===this.top.station).map(c=>c.id);
+  }
+  lineCount(l){ let n=this.deck.filter(c=>c.line===l).length; for(const p of this.players) n+=p.hand.filter(c=>c.line===l).length; return n; }
+  lineAvail(){ const o={}; for(const l of this.active) o[l]=this.lineCount(l); return o; }
+  ticketOk(l){ const av=this.lineAvail(); if(!(l in av)) return false; return av[l]>3 || !Object.values(av).some(n=>n>3); }
+  refill(){
+    if(!this.deck.length && this.discard.length>1){
+      const top=this.discard.pop(); this.deck=shuffle(this.discard); this.discard=[top];
+      this.addLog('🔄 山札が切れたので、場のカードを切り直して山札にしました'); this.event({type:'refill'});
+    }
+  }
+  act(pi,a){ const r=this._act(pi,a); this.refill(); return r; }
   canDeclare(pi){
     const p=this.players[pi]; if(!p||this.winner!=null||p.declared) return false;
     if(p.hand.length===1) return true; // 言い忘れの後でも指摘される前なら宣言できる
-    if(pi!==this.turn) return false;
+    if(pi!==this.turn) return p.hand.length===2 && this.jumpIds(pi).length>0;
     const ids=this.playableIds(pi);
-    return p.hand.some(c=>ids.includes(c.id) && p.hand.length-(c.type==='gate'?2:1)===1);
+    return p.hand.some(c=>ids.includes(c.id) && p.hand.length-(c.type==='gate'&&this.gatePairs(pi,c).length?2:1)===1);
   }
   removePlayer(pi){
     const p=this.players[pi]; if(!p) return; const n=this.players.length;
@@ -494,7 +514,7 @@ class Engine{
     return list.filter(c=>this.canPlay(pi,c)).map(c=>c.id);
   }
   // ---- アクション ----
-  act(pi,a){
+  _act(pi,a){
     if(this.winner!=null) return 'ゲームは終了しています';
     const p=this.players[pi];
     if(a.type==='catch'){
@@ -509,9 +529,24 @@ class Engine{
       p.declared=true; if(this.vuln===pi) this.vuln=null;
       this.addLog(`📣 ${p.name}「ANO!」`); this.event({type:'kw',who:p.name}); return null;
     }
+    if(a.type==='jump'){
+      const card=p.hand.find(c=>c.id===a.id);
+      if(!card || !this.jumpIds(pi).includes(card.id)) return 'ジャンプインできません';
+      if(this.vuln===pi) this.vuln=null;
+      p.hand=p.hand.filter(c=>c!==card); this.discard.push(card); this.drawn=null; this.requiredLine=null;
+      this.lastBy=pi; this.event({type:'play',who:pi,cards:[{...card}],jump:true});
+      this.addLog(`⚡ ${p.name}：ジャンプイン！ ${card.station}駅の改札を通過`);
+      if(p.hand.length===0){ this.winner=pi; this.addLog(`🏆 ${p.name} さんが上がり！ 終点到着！`); this.event({type:'win',who:p.name}); return null; }
+      if(p.hand.length===1){ if(!p.declared){ this.vuln=pi; this.vulnSeq=(this.vulnSeq||0)+1; } } else p.declared=false;
+      this.turn=pi; this.endTurn(1); return null;
+    }
     if(pi!==this.turn) return 'あなたの番ではありません';
     if(a.type==='draw'){
       if(this.drawn) return 'すでに引いています';
+      if(this.pending>0){
+        const k=this.pending; this.pending=0; this.drawCards(p,k);
+        this.addLog(`🏭 ${p.name} さんは車両基地で ${k} 枚引いて休み`); this.endTurn(1); return null;
+      }
       const [c]=this.drawCards(p,1);
       this.addLog(`${p.name} さんが山札から1枚引きました`);
       if(c && this.canPlay(pi,c)){ this.drawn=c.id; return null; }
@@ -529,17 +564,19 @@ class Engine{
       let topCard=card; const played=[card];
       if(card.type==='gate'){
         const pairs=this.gatePairs(pi,card); const pair=pairs.find(c=>c.id===a.pair)||pairs[0];
-        played.push(pair); topCard=pair;
+        if(pair){ played.push(pair); topCard=pair; }
       }
       if(card.type==='ticket'){
         if(!LINES[a.line]) return '路線を選んでください';
+        if(!this.ticketOk(a.line)) return 'その路線は残りカードが3枚以下なので選べません';
       }
       p.hand=p.hand.filter(c=>!played.includes(c));
       for(const c of played) this.discard.push(c);
       this.lastBy=pi; this.event({type:'play',who:pi,cards:played.map(c=>({...c})),line:a.line||null});
       this.drawn=null;
       // ログ
-      if(card.type==='gate') this.addLog(`🟧 ${p.name}：改札で乗り換え！ ${card.station}駅（${LINES[topCard.line].name}）へ 2枚出し`);
+      if(card.type==='gate' && played.length===1) this.addLog(`🟧 ${p.name}：${card.station}駅の改札を通過`);
+      else if(card.type==='gate') this.addLog(`🟧 ${p.name}：改札で乗り換え！ ${card.station}駅（${LINES[topCard.line].name}）へ 2枚出し`);
       else if(card.type==='ticket') this.addLog(`🎫 ${p.name}：乗車券！ 次は「${LINES[a.line].name}」を指定`);
       else if(card.type==='depot') this.addLog(`🏭 ${p.name}：${card.name}（${LINES[card.line].name}）+2`);
       else this.addLog(`${p.name}：${LINES[card.line].name} ${card.station}${card.type==='skip'?'【通過待ち】':card.type==='rev'?'【当駅止まり】':''}`);
@@ -572,8 +609,8 @@ class Engine{
         if(n===2) this.endTurn(2); else this.endTurn(1);
       }
       else if(eff==='depot'){
-        const vi=this.next(1); const v=this.players[vi]; this.drawCards(v,2);
-        this.addLog(`🏭 ${v.name} さんは2枚引いて休み`); this.endTurn(2);
+        this.pending=(this.pending||0)+2;
+        this.addLog(`🏭 +${this.pending}！ ${this.players[this.next(1)].name} さんは車両基地を重ねるか ${this.pending} 枚引く`); this.endTurn(1);
       }
       else this.endTurn(1);
       return null;
@@ -586,7 +623,7 @@ class Engine{
       phase:'play', gid:this.gid, lastBy:this.lastBy, me:pi, turn:this.turn, dir:this.dir, winner:this.winner,
       players:this.players.map(p=>({name:p.name,count:p.hand.length,cpu:!!p.cpu,declared:p.declared,icon:p.icon})),
       hand:this.players[pi].hand, top:this.top, requiredLine:this.requiredLine, drawn:this.turn===pi?this.drawn:null,
-      playable:this.playableIds(pi), canDeclare:this.canDeclare(pi), vuln:this.vuln, active:this.active, rules:this.rules, deckCount:this.deck.length, log:this.log.slice(-30), events:this.events.slice(-10)
+      playable:this.playableIds(pi), jumpable:this.jumpIds(pi), pending:this.pending||0, lineAvail:this.lineAvail(), canDeclare:this.canDeclare(pi), vuln:this.vuln, active:this.active, rules:this.rules, deckCount:this.deck.length, log:this.log.slice(-30), events:this.events.slice(-10)
     };
   }
   // ---- CPU ----
@@ -613,11 +650,12 @@ class Engine{
     const c=cards[0];
     if(c.type==='ticket'){
       const cnt={}; for(const h of p.hand) if(h.line) cnt[h.line]=(cnt[h.line]||0)+1;
-      let best=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0] || this.active[Math.floor(Math.random()*this.active.length)];
+      const okL=this.active.filter(l=>this.ticketOk(l));
+      let best=Object.keys(cnt).filter(l=>okL.includes(l)).sort((a,b)=>cnt[b]-cnt[a])[0] || okL[Math.floor(Math.random()*okL.length)];
       return {type:'play',id:c.id,line:best};
     }
     const tgt=()=>this.players.map((q,i)=>i).filter(i=>i!==pi).sort((x,y)=>this.players[x].hand.length-this.players[y].hand.length)[0];
-    if(c.type==='gate'){ const pr=this.gatePairs(pi,c); return {type:'play',id:c.id,pair:pr[0].id,target:tgt()}; }
+    if(c.type==='gate'){ const pr=this.gatePairs(pi,c); return {type:'play',id:c.id,pair:pr[0]?.id,target:tgt()}; }
     return {type:'play',id:c.id,target:tgt()};
   }
 }
@@ -723,6 +761,14 @@ function scheduleCpu(){
     if(catchers.length && Math.random()<0.6){
       S.catchTimer=setTimeout(()=>{S.catchTimer=null; if(E.vuln===v){E.act(catchers[Math.floor(Math.random()*catchers.length)],{type:'catch'}); syncAll();}},2200+Math.random()*2500);
     }
+  }
+  // CPUのジャンプイン
+  if(!S.jumpTimer && S.jumpRolled!==E.top.id){
+    const js=E.players.map((p,i)=>i).filter(i=>E.players[i].cpu && E.jumpIds(i).length);
+    if(js.length){ S.jumpRolled=E.top.id; if(Math.random()<0.75){ const j=js[Math.floor(Math.random()*js.length)]; const topId=E.top.id;
+      S.jumpTimer=setTimeout(()=>{ S.jumpTimer=null; if(E!==S.engine||E.top.id!==topId) return; const ids=E.jumpIds(j); if(!ids.length) return;
+        if(E.players[j].hand.length===2 && Math.random()<0.85) E.act(j,{type:'declare'});
+        E.act(j,{type:'jump',id:ids[0]}); syncAll(); },900+Math.random()*1200); } }
   }
   const cur=E.players[E.turn];
   if(cur.cpu && !S.cpuTimer){
@@ -888,25 +934,27 @@ function render(v){
   if(v.top.station && !v.requiredLine){ const d=numDigit(v.top.code); const extra=[]; if(v.rules?.digit && d!=null && v.top.type!=='depot') extra.push(`駅ナンバー末尾「${d}」のカード`); if(v.rules?.company) extra.push('同じ会社の路線'); if(extra.length) $('topLines').innerHTML+=`<div class="muted" style="width:100%;text-align:center;font-size:11px">＋ ${extra.join('・')}も出せます</div>`; }
   if(v.requiredLine){ $('reqLine').classList.remove('hidden'); $('reqLine').innerHTML=`🎫 指定：${lineChip(v.requiredLine)} のみ`; }
   else $('reqLine').classList.add('hidden');
-  $('deckCount').textContent=`残り${v.deckCount}枚`;
+  $('deckCount').innerHTML=`残り${v.deckCount}枚`+(v.pending>0?`<br><b class="pend">+${v.pending}</b>`:'');
   $('log').innerHTML=v.log.slice().reverse().map(s=>`<div>${esc(s)}</div>`).join('');
   // ステータス
   let st='';
   if(v.winner!=null) st = v.winner===v.me ? '🏆 あなたの勝ち！終点到着！' : `🏁 ${v.players[v.winner].name} さんの勝ち`;
+  else if(myTurn && v.pending>0) st = v.playable.length ? `🏭 +${v.pending}！ 車両基地を重ねるか、山札から${v.pending}枚引く` : `🏭 +${v.pending}！ 山札をクリックして${v.pending}枚引いてください`;
+  else if((v.jumpable||[]).length) st = `⚡ ${v.top.station}駅の改札でジャンプインできます！`;
   else if(myTurn) st = v.drawn ? '引いたカードを出すか、パスしてください' : (v.playable.length?'あなたの番です。カードを選んでください':'出せるカードがありません。山札から引いてください');
   else st = `${v.players[v.turn].name} さんの番…`;
   $('status').textContent=st; $('status').classList.toggle('myturn',myTurn);
   // 手札
   const hand=v.hand.slice().sort((a,b)=>sortKey(a)-sortKey(b));
   $('hand').innerHTML=hand.map(c=>{
-    const pl=v.playable.includes(c.id);
-    return cardHTML(c,(pl?'playable':(myTurn?'dim':''))+(v.drawn===c.id?' drawn':''));
+    const pl=v.playable.includes(c.id), jp=(v.jumpable||[]).includes(c.id);
+    return cardHTML(c,(pl?'playable':jp?'playable jump':(myTurn?'dim':''))+(v.drawn===c.id?' drawn':''));
   }).join('');
   $('hand').querySelectorAll('.card.playable').forEach(el=>el.onclick=()=>onCardClick(el.dataset.id));
   layoutHand();
   // ボタン
   const me=v.players[v.me];
-  $('deck').classList.toggle('can',myTurn&&!v.drawn&&!v.playable.length);
+  $('deck').classList.toggle('can',myTurn&&!v.drawn&&(!v.playable.length||v.pending>0));
   $('btnPass').classList.toggle('hidden',!(myTurn&&v.drawn));
   $('btnKw').disabled=!v.canDeclare;
   $('btnKw').classList.toggle('on',me.declared);
@@ -924,10 +972,12 @@ function playEvents(v,evs,handRects){
   let delay=0;
   for(const e of evs){
     if(e.type==='play'){
+      if(e.jump) splash('ジャンプイン！',v.players[e.who]?.name||'',pcol(e.who));
       e.cards.forEach((c,j)=>setTimeout(()=>flyCard(v,e,c,handRects[c.id],e===last&&j===e.cards.length-1),delay+j*260));
       delay+=350+e.cards.length*260;
     } else if(e.type==='draw'){ setTimeout(()=>flyDraw(v,e),delay); delay+=200; }
     else if(e.type==='kw'){ const wi=v.players.findIndex(p=>p.name===e.who); setTimeout(()=>splash('ANO!',e.who,wi>=0?pcol(wi):null),delay); }
+    else if(e.type==='refill') setTimeout(()=>splash('山札補充','場のカードを切り直しました','#1f4f8f'),delay);
     else if(e.type==='swap'){ setTimeout(()=>swapAnim(v,e),delay); delay+=400; }
     else if(e.type==='catch') setTimeout(()=>splash('指摘！',`${e.who} +2枚`,'#c4122f',true),delay);
   }
@@ -979,10 +1029,12 @@ function sortKey(c){
 
 function onCardClick(id){
   const v=S.view; const c=v.hand.find(x=>x.id===id);
+  if(v.turn!==v.me && (v.jumpable||[]).includes(id)) return send({type:'jump',id});
   if(c.type==='ticket') return pickLine(id);
   if(c.type==='gate'){
     const m=v.requiredLine?[v.requiredLine]:linesOf(v.top.station);
     const pairs=v.hand.filter(x=>x.id!==id && x.station===c.station && x.line);
+    if(pairs.length===0) return send({type:'play',id});
     if(pairs.length===1) return withTarget({type:'play',id,pair:pairs[0].id},pairs[0],2);
     openModal(`<h2>改札で一緒に出すカードを選択</h2><p class="muted">選んだカードが場札（次の駅）になります</p><div class="row" id="pairRow">${pairs.map(p=>cardHTML(p,'playable')).join('')}</div><div class="row" style="margin-top:12px"><button class="btn ghost" onclick="closeModal()">キャンセル</button></div>`);
     $('pairRow').querySelectorAll('.card').forEach(el=>{el.style.cursor='pointer';el.onclick=()=>{closeModal();withTarget({type:'play',id,pair:el.dataset.id},pairs.find(x=>x.id===el.dataset.id),2)}});
@@ -1000,7 +1052,8 @@ function withTarget(a,eff,nPlayed){
   $('modalInner').querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{ closeModal(); send({...a,target:+b.dataset.t}); });
 }
 function pickLine(id){
-  openModal(`<h2>🎫 乗車券：次の人が出す路線を選択</h2><div class="linegrid">${(S.view.active||LINE_ORDER).map(l=>`<button style="--c:${LINES[l].color}" data-l="${l}">${esc(LINES[l].mk)} ${esc(LINES[l].name)}<small>${esc(LINES[l].co)}</small></button>`).join('')}</div><button class="btn ghost" onclick="closeModal()">キャンセル</button>`);
+  const av=S.view.lineAvail||{}; const anyOk=Object.values(av).some(n=>n>3);
+  openModal(`<h2>🎫 乗車券：次の人が出す路線を選択</h2><p class="muted">手札と山札に残っているカードが3枚以下の路線は選べません</p><div class="linegrid">${(S.view.active||LINE_ORDER).map(l=>{ const n=av[l]??99, ng=anyOk&&n<=3; return `<button style="--c:${LINES[l].color}" data-l="${l}" ${ng?'disabled':''}>${esc(LINES[l].mk)} ${esc(LINES[l].name)}<small>${esc(LINES[l].co)} ・ 残り${n}枚${ng?'（選択不可）':''}</small></button>`}).join('')}</div><button class="btn ghost" onclick="closeModal()">キャンセル</button>`);
   $('modalInner').querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{closeModal();send({type:'play',id,line:b.dataset.l})});
 }
 function showResult(v){
@@ -1022,9 +1075,10 @@ function showRules(){
   <h3>🚉 駅カード</h3><p>路線の色と駅名が書かれた基本カード。たとえば場が「川島駅」なら、島浜線・千波線・佐川本線・大神湖線・地下鉄中央線・空港線のカードが出せます。</p>
   <h3>⏭ 通過待ち</h3><p>次の人を飛ばして、2つ先の人の番になります（スキップ）。</p>
   <h3>🔁 当駅止まり</h3><p>ターンの順番が逆回りになります（リバース）。2人対戦では通過待ちと同じ効果。</p>
-  <h3>🟧 改札（オレンジ）</h3><p>改札と同じ駅名のカードを持っているとき、その2枚をまとめて出せます。場の駅とその改札の駅が同じ路線でつながっていれば出せ、一緒に出した駅カードが新しい場札になります。</p>
-  <h3>🏭 車両基地（+2）</h3><p>次の人は山札から2枚引き、その番は休みです。</p>
-  <h3>🎫 乗車券</h3><p>路線に関係なくいつでも出せます。出した人は路線を1つ選び、次の人はその路線のカードを出します。<b>ANO!宣言後（最後の1枚）には出せません。</b></p>
+  <h3>🟧 改札（オレンジ）</h3><p><b>⚡ジャンプイン：</b>場に改札と同じ駅が出たら、自分の番でなくても改札カード1枚をすぐ出せます。出した人の次の人から順番が続きます（車両基地の+が溜まっている間は不可）。自分の番なら、場と同じ駅の改札は1枚だけでも出せます。<br>改札と同じ駅名のカードを持っているとき、その2枚をまとめて出せます。場の駅とその改札の駅が同じ路線でつながっていれば出せ、一緒に出した駅カードが新しい場札になります。</p>
+  <h3>🏭 車両基地（+2）</h3><p>次の人は山札から2枚引き、その番は休みです。ただし車両基地（路線は問わない）を持っていれば重ねて出せ、+2ずつ溜まって次の人へ回ります。</p>
+  <h3>🎫 乗車券</h3><p>路線に関係なくいつでも出せます。出した人は路線を1つ選び、次の人はその路線のカードを出します。<b>ANO!宣言後（最後の1枚）には出せません。</b>手札と山札に残っているカードが3枚以下の路線は指定できません。</p>
+  <h3>🔄 山札切れ</h3><p>山札がなくなったら、いちばん上以外の場のカードを切り直して山札にします。</p>
   <h3>📣 ANO!</h3><p>カードを出すと残り1枚になるときだけ、自分の番に「ANO!」ボタンを押せます（押してからカードを出す）。宣言せずに残り1枚になると、他のプレイヤーの画面に「ANO!言ってない！」ボタンが出て、押されると2枚追加。指摘される前なら、残り1枚の状態でANO!を押せばセーフです。</p>
   <h3>🔄 手札交換（設定でON/OFF）</h3><p><b>駅ナンバーの末尾が0</b>のカードを出すと、全員が手札を時計回りに隣の人へ渡します。<b>末尾が7</b>なら、出した人が相手を1人選んで手札をまるごと交換します。最後の1枚で出した場合はそのまま上がりです。</p>
   <h3>🗺 収録路線（太字は乗換駅）</h3>${lines}
