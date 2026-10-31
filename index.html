@@ -186,6 +186,13 @@ input[type=text]{background:#0d1828;border:1px solid var(--line);color:var(--tex
 .selbar{position:absolute;left:50%;bottom:258px;transform:translateX(-50%);z-index:25;display:flex;gap:8px;align-items:center;background:rgba(8,40,22,.92);border:2px solid #3ccf7a;border-radius:999px;padding:6px 8px 6px 16px;white-space:nowrap}
 .selbar span{font-size:12px;color:#bff5d3}
 @media (max-width:760px){.selbar{bottom:196px;max-width:94vw}.selbar span{display:none}}
+.arena.many .plate .av{width:54px;height:54px;font-size:28px}
+.arena.many .plate .nm{font-size:12px;max-width:110px}
+.arena.many .plate .cnt{font-size:15px;height:28px;min-width:24px;right:-26px}
+.arena.many .fan .bk{left:-16px;top:-23px;width:32px;height:46px;border-width:1.5px}
+.arena.many .fan .bk::after{font-size:7px}
+.arena.many2 .plate .av{width:46px;height:46px;font-size:24px}
+@media (max-width:760px){.arena.many .plate .av{width:36px;height:36px;font-size:19px}.arena.many .plate .nm{font-size:9px;max-width:70px;padding:1px 10px 1px 4px}.arena.many .plate .cnt{font-size:11px;height:20px;min-width:18px;right:-18px}.arena.many .fan .bk{left:-10px;top:-14px;width:20px;height:28px}.arena.many .fan .bk::after{display:none}}
 .flyback{position:fixed;z-index:39;width:40px;height:58px;margin:-29px 0 0 -20px;border-radius:6px;border:2px solid #fff;background:repeating-linear-gradient(45deg,#1f4f8f 0 6px,#1a4176 6px 12px);pointer-events:none;transition:transform .7s cubic-bezier(.4,0,.2,1)}
 .stlist{font-size:12px;color:var(--sub);line-height:1.6;margin:2px 0 8px}
 @media (max-width:600px){
@@ -321,7 +328,7 @@ input[type=text]{background:#0d1828;border:1px solid var(--line);color:var(--tex
     <div class="row">
       <span>CPUの人数</span>
       <select id="cpuNum" style="padding:8px;border-radius:8px;background:#0d1828;color:#fff;border:1px solid var(--line)">
-        <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
+        <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option>
       </select>
       <button class="btn warn" id="btnSolo">CPU対戦スタート</button>
     </div>
@@ -340,7 +347,7 @@ input[type=text]{background:#0d1828;border:1px solid var(--line);color:var(--tex
     </div>
   </div>
   <div class="box">
-    <h2>乗客 (<span id="lobbyCount">0</span>/6)</h2>
+    <h2>乗客 (<span id="lobbyCount">0</span>/10)</h2>
     <ul class="plist" id="lobbyList"></ul>
     <div class="row" id="hostCtl">
       <button class="btn" id="btnAddCpu">CPUを追加</button>
@@ -830,6 +837,8 @@ const SFX={ on:true, ctx:null,
 };
 function cardSfx(c){ return c.type==='depot'?'depot':c.type==='gate'?'gate':c.type==='ticket'?'ticket':c.type==='skip'?'skip':c.type==='rev'?'rev':'card'; }
 const TEAM=[{name:'赤',color:'#ff4d5e'},{name:'青',color:'#3d9bff'}];
+const MAXP=10;
+const CPU_NAMES=['しまはま','さがわ','みかわ','ほしかげ','ありた','きょうほく','いまぎ','ゆうぎり','くらたけ','おきつ'];
 const PREFIX='kawashima-uno-v1-';
 const S={ settings:{preset:'center',lines:PRESETS[0].lines.slice(),rules:{digit:true,company:false,swap:true}}, role:null, peer:null, conns:{}, hostConn:null, roster:[], engine:null, myName:'', code:'', view:null, cpuTimer:null, catchTimer:null, lastEventK:0 };
 const $=id=>document.getElementById(id);
@@ -869,7 +878,7 @@ function hostRoom(){
 function onHostData(conn,d){
   if(d.t==='join'){
     if(S.engine){ conn.send({t:'err',m:'ゲームはすでに開始しています'}); setTimeout(()=>conn.close(),500); return; }
-    if(S.roster.length>=6){ conn.send({t:'err',m:'満員です'}); setTimeout(()=>conn.close(),500); return; }
+    if(S.roster.length>=MAXP){ conn.send({t:'err',m:'満員です'}); setTimeout(()=>conn.close(),500); return; }
     S.conns[conn.peer]=conn;
     S.roster.push({name:String(d.name).slice(0,10),icon:sanIcon(d.icon),cpu:false,peer:conn.peer}); teamFix();
     broadcastLobby();
@@ -983,7 +992,7 @@ function joinRoom(){
 function soloGame(){
   S.role='solo'; S.myName=myNameVal();
   const n=+$('cpuNum').value;
-  const cpuNames=['しまはま','さがわ','みかわ','ほしかげ','ありた'];
+  const cpuNames=CPU_NAMES;
   S.roster=[{name:S.myName,icon:S.icon,cpu:false,peer:'host'}];
   for(let i=0;i<n;i++) S.roster.push({name:'CPU '+cpuNames[i],cpu:true});
   S.roster.forEach((r,i)=>r.team=i%2);
@@ -1055,9 +1064,9 @@ function renderLobby(){
     S.roster.splice(+b.dataset.rm,1); broadcastLobby(); });
 }
 
-const PCOL=['#ffb020','#4fb3ff','#3ccf7a','#ff6b8a','#b38cff','#4fe0d0'];
+const PCOL=['#ffb020','#4fb3ff','#3ccf7a','#ff6b8a','#b38cff','#4fe0d0','#ff8a3d','#c6e84a','#f06ad8','#9fb2ff'];
 const pcol=i=>PCOL[i%PCOL.length];
-const AVA=['🚃','🚄','🚌','🚂','🚇','🚝'];
+const AVA=['🚃','🚄','🚌','🚂','🚇','🚝','🚅','🚋','🚞','🚈'];
 const plateEl=i=>document.querySelector(`#seat${i} .plate`);
 const chipEl=i=>document.querySelector(`#seat${i} .fan`)||document.querySelector(`#seat${i} .av`);
 function renderSeats(v){
@@ -1070,17 +1079,17 @@ function renderSeats(v){
     const tmc=v.teamMode&&p.team!=null?TEAM[p.team]:null;
     const plate=`<div class="plate ${tmc?'tm':''}" style="--pc:${pcol(i)};--tc:${tmc?tmc.color:'transparent'}">${tmc?`<div class="tmb" style="background:${tmc.color}">${tmc.name}${v.players[v.me].team===p.team&&i!==v.me?'・味方':''}</div>`:''}${p.finished?'<div class="finb">🏁 上がり</div>':''}<div class="nm">${esc(p.name)}</div><div class="av">${iconHTML(p.icon,p.cpu?'🤖':AVA[i%AVA.length])}</div>${S.role==='host'&&i!==v.me?`<button class="kick" data-kick="${i}" title="退出させる">✕</button>`:''}<div class="cnt">${p.count}</div>${p.count===1&&p.declared?'<div class="anob">ANO!</div>':''}</div>`;
     if(sIdx===0){ html+=`<div class="seat mine ${i===v.turn?'turn':''} ${p.finished?'fin':''}" id="seat${i}">${plate}</div>`; return; }
-    const span=Math.min(210,120*(n-2)); const opp=n-1;
+    const span=n>6?250:Math.min(210,120*(n-2)); const opp=n-1;
     const ang=(opp===1?270:165+ (210-span)/2 + (sIdx-1)*span/(opp-1))*Math.PI/180;
     const sx=cx+rx*Math.cos(ang), sy=cy+ry*Math.sin(ang)*(Math.sin(ang)<0?1:0.9);
     const fk=mob?(Math.abs(Math.cos(ang))>0.5?0.76:0.62):0.66; const fx=cx+rx*fk*Math.cos(ang), fy=cy+ry*fk*Math.sin(ang);
     const rot=ang*180/Math.PI-90+180;
-    const k=Math.min(p.count,14), step=Math.min(9,80/Math.max(k,1));
+    const k=Math.min(p.count,n>6?9:14), step=Math.min(n>6?7:9,(n>6?50:80)/Math.max(k,1));
     let fan=''; for(let j=0;j<k;j++) fan+=`<div class="bk" style="transform:rotate(${(j-(k-1)/2)*step}deg)"></div>`;
     html+=`<div class="seat ${i===v.turn?'turn':''} ${p.finished?'fin':''}" id="seat${i}" style="left:${Math.min(W-(mob?66:80),Math.max(mob?44:70,sx))}px;top:${Math.max(mob?70:62,sy-(mob&&Math.abs(Math.cos(ang))>0.5?80:0))}px">${plate}</div>`
         + `<div class="fan" id="fan${i}" style="left:${fx}px;top:${fy}px;transform:rotate(${rot}deg)">${fan}</div>`;
   });
-  $('seats').innerHTML=html;
+  $('seats').innerHTML=html; $('arena').classList.toggle('many',n>6); $('arena').classList.toggle('many2',n>8);
   { const myAv=document.querySelector(`#seat${v.me} .av`); if(myAv){ const can=v.turn!==v.me || v.winner!=null; myAv.classList.toggle('emo',can); myAv.title=can?'クリックでパーティクル！':'';
     myAv.onclick=()=>{ const vv=S.view; if(!vv) return; if(vv.turn===vv.me && vv.winner==null) return; const t=Date.now(); if(t-(S.lastEmo||0)<250) return; S.lastEmo=t; send({type:'emote'}); }; } }
   $('seats').querySelectorAll('[data-kick]').forEach(b=>b.onclick=()=>hostKick(+b.dataset.kick));
@@ -1392,7 +1401,7 @@ try{ if(localStorage.getItem('kwsm_sound')==='0'){ SFX.on=false; $('btnSnd').tex
 document.addEventListener('pointerdown',()=>SFX.unlock(),{once:false});
 $('btnLog').onclick=()=>$('infoPanel').classList.toggle('closed');
 $('infoPanel').classList.add('closed');
-$('btnAddCpu').onclick=()=>{ if(S.roster.length>=6) return; const names=['しまはま','さがわ','みかわ','ほしかげ','ありた','きょうほく']; const used=S.roster.map(r=>r.name); const nm='CPU '+(names.find(n=>!used.includes('CPU '+n))||'?'); S.roster.push({name:nm,cpu:true}); teamFix(); broadcastLobby(); };
+$('btnAddCpu').onclick=()=>{ if(S.roster.length>=MAXP) return; const names=CPU_NAMES; const used=S.roster.map(r=>r.name); const nm='CPU '+(names.find(n=>!used.includes('CPU '+n))||'?'); S.roster.push({name:nm,cpu:true}); teamFix(); broadcastLobby(); };
 $('btnStart').onclick=startGame;
 $('btnLeave').onclick=()=>location.href=location.pathname;
 $('btnCopy').onclick=()=>{ const url=location.origin+location.pathname+'?room='+S.code; navigator.clipboard?.writeText(url).then(()=>toastErr('コピーしました'),()=>prompt('このURLを共有してください',url)); };
